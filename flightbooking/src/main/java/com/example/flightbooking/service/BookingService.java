@@ -7,6 +7,7 @@ import com.example.flightbooking.entity.*;
 import com.example.flightbooking.exception.ApiException;
 import com.example.flightbooking.repository.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -205,5 +206,31 @@ public class BookingService {
         }
 
         bookingRepository.save(booking);
+    }
+
+    // Trong BookingService.java (hoặc SeatService.java)
+    @Transactional
+    public void releaseSeatHold(String userId, UUID flightId, UUID seatId) {
+        // 1. Kiểm tra thông tin ghế
+        FlightSeat flightSeat = flightSeatRepository.findById(seatId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Ghế không tồn tại"));
+
+        if (!flightSeat.getFlight().getId().equals(flightId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Ghế không thuộc chuyến bay này");
+        }
+
+        if (flightSeat.getStatus() == SeatStatus.HELD) {
+            if (flightSeat.getHeldBy() != null && !flightSeat.getHeldBy().equals(userId)) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không có quyền hủy giữ ghế này");
+            }
+            flightSeat.setStatus(SeatStatus.AVAILABLE);
+            flightSeat.setHeldBy(null);
+            flightSeat.setHeldUntil(null);
+            flightSeatRepository.save(flightSeat);
+        }
+
+        // 3. Giải phóng Redis Lock (nếu đang dùng Redis để lock key giữ ghế)
+        String lockKey = "seat_hold:" + flightId + ":" + seatId;
+        redisLockService.unlock(lockKey);
     }
 }

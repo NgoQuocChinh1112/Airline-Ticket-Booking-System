@@ -39,6 +39,10 @@ public class RedisLockService {
         return Boolean.TRUE.equals(result);
     }
 
+    public void unlock(String key) {
+        redisTemplate.delete(key);
+    }
+
     public boolean releaseSeatLock(String flightId, String seatId, String ownerId) {
         DefaultRedisScript<Long> script = new DefaultRedisScript<>(RELEASE_SCRIPT, Long.class);
         Long result = redisTemplate.execute(script, Collections.singletonList(lockKey(flightId, seatId)), ownerId);

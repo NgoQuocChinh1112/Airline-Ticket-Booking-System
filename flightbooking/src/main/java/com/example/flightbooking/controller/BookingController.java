@@ -46,10 +46,15 @@ public class BookingController {
     public void cancelBooking(@PathVariable String id) {
         bookingService.cancelBooking(UUID.fromString(id));
     }
+    @DeleteMapping("/{flightId}/seats/{seatId}/hold")
+    public ResponseEntity<Void> releaseSeatHold(
+            Authentication authentication,
+            @PathVariable UUID flightId,
+            @PathVariable UUID seatId) {
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelBookingDelete(@PathVariable String id) {
-        bookingService.cancelBooking(UUID.fromString(id));
-        return ResponseEntity.noContent().build();
+        String userId = (String) authentication.getPrincipal();
+        bookingService.releaseSeatHold(userId, flightId, seatId);
+
+        return ResponseEntity.noContent().build(); // Tra v4 204 No Content
     }
 }
