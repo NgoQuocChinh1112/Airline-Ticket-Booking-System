@@ -18,7 +18,7 @@ public class BookingSeat {
     // unique = true: 1 ghế chỉ được gắn vào TỐI ĐA 1 booking.
     // Đây là "lưới an toàn cuối cùng" chống bán trùng ghế ở tầng database.
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "flight_seat_id", nullable = false, unique = true)
+    @JoinColumn(name = "flight_seat_id", nullable = false)
     private FlightSeat flightSeat;
 
     public BookingSeat() {}

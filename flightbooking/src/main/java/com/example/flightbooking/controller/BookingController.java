@@ -1,5 +1,6 @@
 package com.example.flightbooking.controller;
 
+import com.example.flightbooking.dto.BookingResponse;
 import com.example.flightbooking.dto.CreateBookingRequest;
 import com.example.flightbooking.dto.HoldSeatRequest;
 import com.example.flightbooking.entity.Booking;
@@ -28,16 +29,16 @@ public class BookingController {
     }
 
     @PostMapping
-    public Booking createBooking(Authentication authentication, @Valid @RequestBody CreateBookingRequest req) {
+    public BookingResponse createBooking(Authentication authentication, @Valid @RequestBody CreateBookingRequest req) {
         String userId = (String) authentication.getPrincipal();
-        return bookingService.createBooking(userId, req);
+        Booking booking = bookingService.createBooking(userId, req);
+        return new BookingResponse(booking);
     }
 
-    // Trong thực tế endpoint này được gọi từ webhook cổng thanh toán (Stripe/VNPay).
-    // Ở đây để permitAll và mock thanh toán thành công, phục vụ mục đích test sườn hệ thống.
     @PostMapping("/{id}/confirm")
-    public Booking confirmBooking(@PathVariable String id) {
-        return bookingService.confirmBooking(UUID.fromString(id));
+    public BookingResponse confirmBooking(@PathVariable String id) {
+        Booking booking = bookingService.confirmBooking(UUID.fromString(id));
+        return new BookingResponse(booking);
     }
 
     @PostMapping("/{id}/cancel")

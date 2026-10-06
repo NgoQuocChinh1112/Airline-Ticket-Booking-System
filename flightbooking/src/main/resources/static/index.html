@@ -255,31 +255,46 @@
 
     async function createBooking(){
         if (state.selectedSeats.length === 0){ showMsg('bookingMsg', 'Chọn ít nhất 1 ghế trước.', false); return; }
+
+        // Sửa lại selector bọc ngoặc kép chuẩn
         const passengers = state.selectedSeats.map((_, i) => ({
-            fullName: document.querySelector(`[data-field=fullName][data-index="${i}"]`).value,
-            passportNumber: document.querySelector(`[data-field=passportNumber][data-index="${i}"]`).value,
-            dob: document.querySelector(`[data-field=dob][data-index="${i}"]`).value,
+            fullName: document.querySelector(`[data-field="fullName"][data-index="${i}"]`)?.value || '',
+            passportNumber: document.querySelector(`[data-field="passportNumber"][data-index="${i}"]`)?.value || '',
+            dob: document.querySelector(`[data-field="dob"][data-index="${i}"]`)?.value || '',
         }));
+
         try {
             const booking = await api('/bookings', 'POST', { flightId: state.flightId, seatIds: state.selectedSeats, passengers }, true);
-            state.bookingId = booking.id;
+
+            console.log("Response từ Backend:", booking);
+            // Kiểm tra kĩ trường id trả về từ Backend (hỗ trợ cả booking.id hoặc booking.bookingId)
+            state.bookingId = booking.id || booking.bookingId;
+
+            if (!state.bookingId) {
+                throw new Error("Backend không trả về Booking ID hợp lệ.");
+            }
+
             showMsg('bookingMsg', 'Tạo booking thành công, trạng thái: pending.', true);
             document.getElementById('confirmPanel').classList.remove('hidden');
-            document.getElementById('bookingIdText').textContent = booking.id;
+            document.getElementById('bookingIdText').textContent = state.bookingId;
         } catch(e){ showMsg('bookingMsg', e.message, false); }
     }
 
     async function confirmBooking(){
+        if (!state.bookingId) { showMsg('confirmMsg', 'Chưa có Booking ID.', false); return; }
         try {
-            await api(`/bookings/${state.bookingId}/confirm`, 'POST', null, false);
+            // SỬA LỖI: Truyền auth = true để gửi JWT Token xác thực
+            await api(`/bookings/${state.bookingId}/confirm`, 'POST', null, true);
             showMsg('confirmMsg', 'Thanh toán thành công! Booking đã confirmed, ghế đã booked.', true);
             loadSeats();
         } catch(e){ showMsg('confirmMsg', e.message, false); }
     }
 
     async function cancelBooking(){
+        if (!state.bookingId) { showMsg('confirmMsg', 'Chưa có Booking ID.', false); return; }
         try {
-            await api(`/bookings/${state.bookingId}/cancel`, 'POST', null, false);
+            // SỬA LỖI: Truyền auth = true để gửi JWT Token xác thực
+            await api(`/bookings/${state.bookingId}/cancel`, 'POST', null, true);
             showMsg('confirmMsg', 'Đã hủy booking, ghế trở lại available.', true);
             loadSeats();
         } catch(e){ showMsg('confirmMsg', e.message, false); }
