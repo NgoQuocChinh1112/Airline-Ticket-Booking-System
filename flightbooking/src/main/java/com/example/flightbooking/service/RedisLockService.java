@@ -16,10 +16,10 @@ public class RedisLockService {
     // tránh trường hợp xóa nhầm lock của người khác sau khi lock cũ đã hết hạn.
     private static final String RELEASE_SCRIPT =
             "if redis.call('GET', KEYS[1]) == ARGV[1] then " +
-                    "  return redis.call('DEL', KEYS[1]) " +
-                    "else " +
-                    "  return 0 " +
-                    "end";
+            "  return redis.call('DEL', KEYS[1]) " +
+            "else " +
+            "  return 0 " +
+            "end";
 
     public RedisLockService(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;

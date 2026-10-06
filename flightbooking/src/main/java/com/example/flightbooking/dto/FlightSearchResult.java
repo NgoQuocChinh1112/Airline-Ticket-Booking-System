@@ -17,8 +17,8 @@ public class FlightSearchResult {
     private long availableSeats;
 
     public FlightSearchResult(String id, String flightNumber, String sourceCode, String sourceCity,
-                              String destCode, String destCity, String aircraft,
-                              Instant departureTime, Instant arrivalTime, BigDecimal price, long availableSeats) {
+                               String destCode, String destCity, String aircraft,
+                               Instant departureTime, Instant arrivalTime, BigDecimal price, long availableSeats) {
         this.id = id;
         this.flightNumber = flightNumber;
         this.sourceCode = sourceCode;

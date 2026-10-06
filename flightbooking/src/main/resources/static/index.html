@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlightBooking VIP Pro Elite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top custom-nav transition-all">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 text-white d-flex align-items-center gap-2" href="#">
+                <i class="fa-solid fa-plane-departure text-gold"></i> FLIGHT<span class="text-gold">VIP</span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span id="jwt-status" class="nav-status-badge"><i class="fa-solid fa-circle-xmark text-danger"></i> Khách</span>
+                <button class="btn btn-gold rounded-pill px-4 fw-semibold" data-bs-toggle="modal" data-bs-target="#authModal">
+                    <i class="fa-regular fa-circle-user me-1"></i> Tài khoản
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section position-relative">
+        <div class="hero-overlay"></div>
+        <div class="container position-relative z-index-1 hero-content text-center text-white">
+            <h1 class="display-3 fw-bold mb-3 hero-title">Nâng Tầm Chuyến Bay Của Bạn</h1>
+            <p class="lead mb-5 opacity-75">Trải nghiệm đặt vé thông minh, bảo mật tuyệt đối với hệ thống lõi Spring Boot & Redis.</p>
+            
+            <!-- Horizontal Search Widget -->
+            <div class="search-widget glass-panel p-4 rounded-4 shadow-lg text-start mx-auto">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label text-white-50 small fw-semibold"><i class="fa-solid fa-plane-departure me-1"></i> Điểm đi</label>
+                        <select class="form-select form-select-lg premium-input" id="from">
+                            <option value="HAN">Hà Nội (HAN)</option>
+                            <option value="SGN">Hồ Chí Minh (SGN)</option>
+                            <option value="DAD">Đà Nẵng (DAD)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-white-50 small fw-semibold"><i class="fa-solid fa-plane-arrival me-1"></i> Điểm đến</label>
+                        <select class="form-select form-select-lg premium-input" id="to">
+                            <option value="SGN">Hồ Chí Minh (SGN)</option>
+                            <option value="HAN">Hà Nội (HAN)</option>
+                            <option value="DAD">Đà Nẵng (DAD)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-white-50 small fw-semibold"><i class="fa-solid fa-calendar-days me-1"></i> Ngày đi</label>
+                        <input type="date" class="form-control form-control-lg premium-input" id="date" value="2026-10-04">
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-gold btn-lg w-100 fw-bold" onclick="App.searchFlights()">
+                            TÌM CHUYẾN BAY <i class="fa-solid fa-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="container my-5 py-4" id="mainContent">
+        <!-- Loader -->
+        <div id="loader" class="text-center py-5" style="display: none;">
+            <div class="spinner-border text-gold mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <h5 class="text-white-50">Đang quét các hệ thống vé máy bay...</h5>
+        </div>
+
+        <div class="row g-4">
+            <!-- Khu vực kết quả chuyến bay -->
+            <div class="col-lg-7">
+                <div id="flightResults" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="text-white fw-bold mb-0">Chuyến bay khả dụng</h4>
+                        <span class="badge bg-gold text-dark fs-6 rounded-pill" id="resultCount"></span>
+                    </div>
+                    <div id="flightList" class="d-flex flex-column gap-3"></div>
+                </div>
+            </div>
+
+            <!-- Khu vực sơ đồ ghế ngồi -->
+            <div class="col-lg-5">
+                <div id="seatMapContainer" style="display: none;" class="position-sticky" style="top: 100px;">
+                    <div class="glass-panel p-4 rounded-4 shadow-lg border border-secondary border-opacity-25">
+                        <h5 class="text-gold fw-bold mb-4 text-center"><i class="fa-solid fa-couch me-2"></i>Chọn ghế khoang Thương Gia</h5>
+                        
+                        <div class="d-flex justify-content-center gap-3 mb-4 small">
+                            <div class="text-white-50"><span class="seat-indicator available"></span> Trống</div>
+                            <div class="text-white-50"><span class="seat-indicator selected"></span> Đang chọn</div>
+                            <div class="text-white-50"><span class="seat-indicator booked"></span> Đã bán</div>
+                        </div>
+                        
+                        <div class="airplane-body mx-auto mb-4">
+                            <div class="airplane-nose"></div>
+                            <div id="seatGrid" class="p-3"></div>
+                        </div>
+
+                        <div class="bg-dark p-3 rounded-3 border border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-white-50 small mb-1">Ghế đang chọn</div>
+                                <div class="text-gold h3 mb-0 fw-bold" id="selectedSeatLabel">--</div>
+                            </div>
+                            <button class="btn btn-success px-4 py-2 fw-bold pulse-btn" id="btnHoldSeat" disabled onclick="App.holdSeat()">
+                                <i class="fa-solid fa-lock me-1"></i> Giữ ghế
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal (Popup Đăng nhập/Đăng ký) -->
+    <div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-panel border border-secondary border-opacity-25 rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title text-gold fw-bold">Xác thực tài khoản</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="text" id="apiUrl" class="d-none" value="http://localhost:3000">
+                    
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control premium-input" id="email" placeholder="name@example.com" value="test@vip.com">
+                        <label class="text-muted">Email</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="password" class="form-control premium-input" id="password" placeholder="Password" value="123456">
+                        <label class="text-muted">Mật khẩu</label>
+                    </div>
+                    <div class="form-floating mb-4">
+                        <input type="text" class="form-control premium-input" id="fullName" placeholder="Name" value="Khách VIP">
+                        <label class="text-muted">Họ tên (Dành cho Đăng ký mới)</label>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-light flex-grow-1 fw-bold py-2" onclick="App.login()">Đăng nhập</button>
+                        <button class="btn btn-gold flex-grow-1 fw-bold py-2" onclick="App.register()">Đăng ký</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
