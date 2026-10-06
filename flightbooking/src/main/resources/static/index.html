@@ -2,157 +2,270 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlightBooking VIP Pro Elite</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test Đặt Vé Máy Bay</title>
+    <style>
+        :root{--bg:#0f1720;--panel:#16212c;--line:#26333f;--text:#e7edf3;--muted:#8fa1b3;--accent:#3d8bfd;--ok:#2fbf71;--bad:#e15b5b;--held:#d9a53c}
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;max-width:900px;margin:0 auto}
+        h1{font-size:20px;font-weight:600;margin:0 0 4px}
+        h2{font-size:15px;font-weight:600;color:var(--muted);text-transform:none;margin:0 0 12px}
+        .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+        .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+        label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:10px}
+        input,select{width:100%;padding:8px 10px;background:#0c141b;border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px}
+        input:first-child,label:first-child{margin-top:0}
+        button{margin-top:14px;padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer}
+        button:hover{opacity:.9}
+        button.secondary{background:#2a3742}
+        .row{display:flex;gap:10px}
+        .row > div{flex:1}
+        .msg{margin-top:10px;font-size:13px;padding:8px 10px;border-radius:6px;display:none}
+        .msg.ok{display:block;background:rgba(47,191,113,.12);color:var(--ok)}
+        .msg.bad{display:block;background:rgba(225,91,91,.12);color:var(--bad)}
+        .flight-item{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+        .flight-item:hover{border-color:var(--accent)}
+        .flight-item .num{font-weight:600}
+        .flight-item .info{color:var(--muted);font-size:13px}
+        .flight-item .price{color:var(--ok);font-weight:600}
+        .seat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:12px 0}
+        .seat{padding:10px 0;text-align:center;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid var(--line);background:#0c141b}
+        .seat.available:hover{border-color:var(--accent)}
+        .seat.booked{background:#26333f;color:var(--muted);cursor:not-allowed}
+        .seat.held{background:rgba(217,165,60,.15);color:var(--held);cursor:not-allowed}
+        .seat.selected{background:var(--accent);color:#fff;border-color:var(--accent)}
+        .hidden{display:none}
+        code{background:#0c141b;padding:1px 5px;border-radius:4px;font-size:12px}
+        .passenger-row{display:flex;gap:8px;margin-top:8px}
+        .passenger-row input{flex:1}
+    </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg fixed-top custom-nav transition-all">
-        <div class="container">
-            <a class="navbar-brand fw-bold fs-4 text-white d-flex align-items-center gap-2" href="#">
-                <i class="fa-solid fa-plane-departure text-gold"></i> FLIGHT<span class="text-gold">VIP</span>
-            </a>
-            <div class="d-flex align-items-center gap-3">
-                <span id="jwt-status" class="nav-status-badge"><i class="fa-solid fa-circle-xmark text-danger"></i> Khách</span>
-                <button class="btn btn-gold rounded-pill px-4 fw-semibold" data-bs-toggle="modal" data-bs-target="#authModal">
-                    <i class="fa-regular fa-circle-user me-1"></i> Tài khoản
-                </button>
-            </div>
-        </div>
-    </nav>
 
-    <!-- Hero Section -->
-    <div class="hero-section position-relative">
-        <div class="hero-overlay"></div>
-        <div class="container position-relative z-index-1 hero-content text-center text-white">
-            <h1 class="display-3 fw-bold mb-3 hero-title">Nâng Tầm Chuyến Bay Của Bạn</h1>
-            <p class="lead mb-5 opacity-75">Trải nghiệm đặt vé thông minh, bảo mật tuyệt đối với hệ thống lõi Spring Boot & Redis.</p>
-            
-            <!-- Horizontal Search Widget -->
-            <div class="search-widget glass-panel p-4 rounded-4 shadow-lg text-start mx-auto">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label text-white-50 small fw-semibold"><i class="fa-solid fa-plane-departure me-1"></i> Điểm đi</label>
-                        <select class="form-select form-select-lg premium-input" id="from">
-                            <option value="HAN">Hà Nội (HAN)</option>
-                            <option value="SGN">Hồ Chí Minh (SGN)</option>
-                            <option value="DAD">Đà Nẵng (DAD)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label text-white-50 small fw-semibold"><i class="fa-solid fa-plane-arrival me-1"></i> Điểm đến</label>
-                        <select class="form-select form-select-lg premium-input" id="to">
-                            <option value="SGN">Hồ Chí Minh (SGN)</option>
-                            <option value="HAN">Hà Nội (HAN)</option>
-                            <option value="DAD">Đà Nẵng (DAD)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label text-white-50 small fw-semibold"><i class="fa-solid fa-calendar-days me-1"></i> Ngày đi</label>
-                        <input type="date" class="form-control form-control-lg premium-input" id="date" value="2026-10-04">
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-gold btn-lg w-100 fw-bold" onclick="App.searchFlights()">
-                            TÌM CHUYẾN BAY <i class="fa-solid fa-arrow-right ms-1"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
+<h1>✈️ Test Đặt Vé Máy Bay</h1>
+<div class="sub">Trang test đơn giản gọi trực tiếp API backend — không đại diện cho giao diện sản phẩm cuối.</div>
+
+<div class="panel">
+    <h2>0. Địa chỉ API</h2>
+    <label>API URL</label>
+    <input id="apiUrl" value="http://localhost:3000">
+</div>
+
+<div class="panel">
+    <h2>1. Tài khoản</h2>
+    <div class="row">
+        <div>
+            <label>Email</label>
+            <input id="email" value="test@example.com">
+        </div>
+        <div>
+            <label>Mật khẩu</label>
+            <input id="password" type="password" value="123456">
         </div>
     </div>
+    <label>Họ tên (chỉ cần khi đăng ký)</label>
+    <input id="fullName" value="Nguyen Van A">
+    <button onclick="register()">Đăng ký</button>
+    <button class="secondary" onclick="login()">Đăng nhập</button>
+    <div id="authMsg" class="msg"></div>
+</div>
 
-    <!-- Main Content Area -->
-    <div class="container my-5 py-4" id="mainContent">
-        <!-- Loader -->
-        <div id="loader" class="text-center py-5" style="display: none;">
-            <div class="spinner-border text-gold mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-            <h5 class="text-white-50">Đang quét các hệ thống vé máy bay...</h5>
+<div class="panel">
+    <h2>2. Tìm chuyến bay</h2>
+    <div class="row">
+        <div>
+            <label>Sân bay đi</label>
+            <input id="source" value="HAN">
         </div>
-
-        <div class="row g-4">
-            <!-- Khu vực kết quả chuyến bay -->
-            <div class="col-lg-7">
-                <div id="flightResults" style="display: none;">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h4 class="text-white fw-bold mb-0">Chuyến bay khả dụng</h4>
-                        <span class="badge bg-gold text-dark fs-6 rounded-pill" id="resultCount"></span>
-                    </div>
-                    <div id="flightList" class="d-flex flex-column gap-3"></div>
-                </div>
-            </div>
-
-            <!-- Khu vực sơ đồ ghế ngồi -->
-            <div class="col-lg-5">
-                <div id="seatMapContainer" style="display: none;" class="position-sticky" style="top: 100px;">
-                    <div class="glass-panel p-4 rounded-4 shadow-lg border border-secondary border-opacity-25">
-                        <h5 class="text-gold fw-bold mb-4 text-center"><i class="fa-solid fa-couch me-2"></i>Chọn ghế khoang Thương Gia</h5>
-                        
-                        <div class="d-flex justify-content-center gap-3 mb-4 small">
-                            <div class="text-white-50"><span class="seat-indicator available"></span> Trống</div>
-                            <div class="text-white-50"><span class="seat-indicator selected"></span> Đang chọn</div>
-                            <div class="text-white-50"><span class="seat-indicator booked"></span> Đã bán</div>
-                        </div>
-                        
-                        <div class="airplane-body mx-auto mb-4">
-                            <div class="airplane-nose"></div>
-                            <div id="seatGrid" class="p-3"></div>
-                        </div>
-
-                        <div class="bg-dark p-3 rounded-3 border border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="text-white-50 small mb-1">Ghế đang chọn</div>
-                                <div class="text-gold h3 mb-0 fw-bold" id="selectedSeatLabel">--</div>
-                            </div>
-                            <button class="btn btn-success px-4 py-2 fw-bold pulse-btn" id="btnHoldSeat" disabled onclick="App.holdSeat()">
-                                <i class="fa-solid fa-lock me-1"></i> Giữ ghế
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div>
+            <label>Sân bay đến</label>
+            <input id="dest" value="SGN">
+        </div>
+        <div>
+            <label>Ngày đi</label>
+            <input id="date" type="date">
         </div>
     </div>
+    <button onclick="searchFlights()">Tìm chuyến bay</button>
+    <div id="searchMsg" class="msg"></div>
+    <div id="flightList" style="margin-top:12px"></div>
+</div>
 
-    <!-- Auth Modal (Popup Đăng nhập/Đăng ký) -->
-    <div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content glass-panel border border-secondary border-opacity-25 rounded-4">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title text-gold fw-bold">Xác thực tài khoản</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <input type="text" id="apiUrl" class="d-none" value="http://localhost:3000">
-                    
-                    <div class="form-floating mb-3">
-                        <input type="email" class="form-control premium-input" id="email" placeholder="name@example.com" value="test@vip.com">
-                        <label class="text-muted">Email</label>
-                    </div>
-                    <div class="form-floating mb-3">
-                        <input type="password" class="form-control premium-input" id="password" placeholder="Password" value="123456">
-                        <label class="text-muted">Mật khẩu</label>
-                    </div>
-                    <div class="form-floating mb-4">
-                        <input type="text" class="form-control premium-input" id="fullName" placeholder="Name" value="Khách VIP">
-                        <label class="text-muted">Họ tên (Dành cho Đăng ký mới)</label>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-light flex-grow-1 fw-bold py-2" onclick="App.login()">Đăng nhập</button>
-                        <button class="btn btn-gold flex-grow-1 fw-bold py-2" onclick="App.register()">Đăng ký</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="panel hidden" id="seatPanel">
+    <h2>3. Chọn ghế — chuyến <span id="selectedFlightNumber"></span></h2>
+    <div id="seatGrid" class="seat-grid"></div>
+    <div style="font-size:12px;color:var(--muted)">
+        <span style="color:var(--held)">■</span> đang giữ &nbsp;
+        <span style="color:var(--muted)">■</span> đã đặt &nbsp;
+        <span style="color:var(--accent)">■</span> bạn đang chọn
     </div>
+    <div id="passengerForm"></div>
+    <button onclick="createBooking()">Tạo booking</button>
+    <div id="bookingMsg" class="msg"></div>
+</div>
 
-    <!-- Toast Notification -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+<div class="panel hidden" id="confirmPanel">
+    <h2>4. Thanh toán (giả lập)</h2>
+    <div>Booking ID: <code id="bookingIdText"></code></div>
+    <button onclick="confirmBooking()">✅ Giả lập thanh toán thành công</button>
+    <button class="secondary" onclick="cancelBooking()">❌ Hủy booking</button>
+    <div id="confirmMsg" class="msg"></div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/main.js"></script>
+<script>
+    let state = { token: null, flightId: null, flightPrice: 0, selectedSeats: [], bookingId: null };
+
+    document.getElementById('date').valueAsDate = new Date(Date.now() + 24*3600*1000);
+
+    function apiUrl(){ return document.getElementById('apiUrl').value.replace(/\/$/,''); }
+
+    function showMsg(id, text, ok){
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.className = 'msg ' + (ok ? 'ok' : 'bad');
+    }
+
+    async function api(path, method, body, auth){
+        const headers = {'Content-Type':'application/json'};
+        if (auth && state.token) headers['Authorization'] = 'Bearer ' + state.token;
+        const res = await fetch(apiUrl() + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || ('Lỗi ' + res.status));
+        return data;
+    }
+
+    async function register(){
+        try {
+            const data = await api('/auth/register', 'POST', {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                fullName: document.getElementById('fullName').value,
+            });
+            state.token = data.accessToken;
+            showMsg('authMsg', 'Đăng ký thành công, đã đăng nhập luôn.', true);
+        } catch(e){ showMsg('authMsg', e.message, false); }
+    }
+
+    async function login(){
+        try {
+            const data = await api('/auth/login', 'POST', {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+            });
+            state.token = data.accessToken;
+            showMsg('authMsg', 'Đăng nhập thành công.', true);
+        } catch(e){ showMsg('authMsg', e.message, false); }
+    }
+
+    async function searchFlights(){
+        const list = document.getElementById('flightList');
+        list.innerHTML = '';
+        try {
+            const flights = await api(`/flights/search?sourceAirportCode=${document.getElementById('source').value}&destAirportCode=${document.getElementById('dest').value}&departureDate=${document.getElementById('date').value}`, 'GET');
+            if (flights.length === 0){ showMsg('searchMsg', 'Không tìm thấy chuyến bay nào ngày này.', false); return; }
+            showMsg('searchMsg', `Tìm thấy ${flights.length} chuyến bay.`, true);
+            flights.forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'flight-item';
+                const src = f.source ? f.source.code : f.sourceCode;
+                const dst = f.destination ? f.destination.code : f.destCode;
+                const time = new Date(f.departureTime).toLocaleString('vi-VN');
+                div.innerHTML = `<div><div class="num">${f.flightNumber}</div><div class="info">${src} → ${dst} · ${time} · còn ${f.availableSeats} ghế</div></div><div class="price">${Number(f.price).toLocaleString('vi-VN')}đ</div>`;
+                div.onclick = () => selectFlight(f.id, f.flightNumber, f.price);
+                list.appendChild(div);
+            });
+        } catch(e){ showMsg('searchMsg', e.message, false); }
+    }
+
+    async function selectFlight(id, number, price){
+        state.flightId = id;
+        state.flightPrice = price;
+        state.selectedSeats = [];
+        document.getElementById('selectedFlightNumber').textContent = number;
+        document.getElementById('seatPanel').classList.remove('hidden');
+        document.getElementById('confirmPanel').classList.add('hidden');
+        await loadSeats();
+    }
+
+    async function loadSeats(){
+        const grid = document.getElementById('seatGrid');
+        grid.innerHTML = '';
+        const seats = await api(`/flights/${state.flightId}/seats`, 'GET');
+        seats.forEach(s => {
+            const div = document.createElement('div');
+            const status = s.status.toLowerCase();
+            div.className = 'seat ' + status;
+            div.textContent = s.seatNumber;
+            div.dataset.id = s.id;
+            if (status === 'available'){
+                div.onclick = () => toggleSeat(div, s.id);
+            }
+            grid.appendChild(div);
+        });
+    }
+
+    async function toggleSeat(div, seatId){
+        if (!state.token){ showMsg('bookingMsg', 'Bạn cần đăng nhập trước khi giữ ghế.', false); return; }
+        if (div.classList.contains('selected')){
+            div.classList.remove('selected');
+            state.selectedSeats = state.selectedSeats.filter(id => id !== seatId);
+            renderPassengerForm();
+            return;
+        }
+        try {
+            await api('/bookings/hold-seat', 'POST', { flightId: state.flightId, seatId }, true);
+            div.classList.add('selected');
+            state.selectedSeats.push(seatId);
+            showMsg('bookingMsg', `Đã giữ ghế ${div.textContent} trong 15 phút.`, true);
+            renderPassengerForm();
+        } catch(e){ showMsg('bookingMsg', e.message, false); }
+    }
+
+    function renderPassengerForm(){
+        const form = document.getElementById('passengerForm');
+        form.innerHTML = state.selectedSeats.length ? '<label>Thông tin hành khách (theo thứ tự ghế đã chọn)</label>' : '';
+        state.selectedSeats.forEach((seatId, i) => {
+            const row = document.createElement('div');
+            row.className = 'passenger-row';
+            row.innerHTML = `
+      <input placeholder="Họ tên" data-field="fullName" data-index="${i}">
+      <input placeholder="Số hộ chiếu" data-field="passportNumber" data-index="${i}">
+      <input type="date" data-field="dob" data-index="${i}">`;
+            form.appendChild(row);
+        });
+    }
+
+    async function createBooking(){
+        if (state.selectedSeats.length === 0){ showMsg('bookingMsg', 'Chọn ít nhất 1 ghế trước.', false); return; }
+        const passengers = state.selectedSeats.map((_, i) => ({
+            fullName: document.querySelector(`[data-field=fullName][data-index="${i}"]`).value,
+            passportNumber: document.querySelector(`[data-field=passportNumber][data-index="${i}"]`).value,
+            dob: document.querySelector(`[data-field=dob][data-index="${i}"]`).value,
+        }));
+        try {
+            const booking = await api('/bookings', 'POST', { flightId: state.flightId, seatIds: state.selectedSeats, passengers }, true);
+            state.bookingId = booking.id;
+            showMsg('bookingMsg', 'Tạo booking thành công, trạng thái: pending.', true);
+            document.getElementById('confirmPanel').classList.remove('hidden');
+            document.getElementById('bookingIdText').textContent = booking.id;
+        } catch(e){ showMsg('bookingMsg', e.message, false); }
+    }
+
+    async function confirmBooking(){
+        try {
+            await api(`/bookings/${state.bookingId}/confirm`, 'POST', null, false);
+            showMsg('confirmMsg', 'Thanh toán thành công! Booking đã confirmed, ghế đã booked.', true);
+            loadSeats();
+        } catch(e){ showMsg('confirmMsg', e.message, false); }
+    }
+
+    async function cancelBooking(){
+        try {
+            await api(`/bookings/${state.bookingId}/cancel`, 'POST', null, false);
+            showMsg('confirmMsg', 'Đã hủy booking, ghế trở lại available.', true);
+            loadSeats();
+        } catch(e){ showMsg('confirmMsg', e.message, false); }
+    }
+</script>
 </body>
 </html>
