@@ -40,7 +40,7 @@ Hệ thống cung cấp đầy đủ các phương thức HTTP (GET, POST, DELET
   - DELETE /api/bookings/{id}: Hủy đơn đặt vé (Giải phóng ghế về trạng thái `AVAILABLE`).
 
 Tài liệu API tương tác trực tiếp (OpenAPI/Swagger UI) khả dụng tại:
-http://localhost:3000/swagger-ui.html
+http://localhost:3000/swagger-ui/index.html
 
 3. Bảo mật & Xác thực
 
