@@ -44,6 +44,11 @@ public class SecurityConfig {
                         .requestMatchers("/flights/**").permitAll()
                         .requestMatchers("/bookings/*/confirm", "/bookings/*/cancel").permitAll()
                         // Mọi API khác đều phải có thẻ JWT
+                        .requestMatchers(
+                            "/swagger-ui/**",
+                            "/swagger-ui.html",
+                            "/v3/api-docs/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
