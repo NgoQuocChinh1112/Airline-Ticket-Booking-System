@@ -7,6 +7,7 @@ import com.example.flightbooking.entity.Booking;
 import com.example.flightbooking.entity.FlightSeat;
 import com.example.flightbooking.service.BookingService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,5 +45,11 @@ public class BookingController {
     @PostMapping("/{id}/cancel")
     public void cancelBooking(@PathVariable String id) {
         bookingService.cancelBooking(UUID.fromString(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancelBookingDelete(@PathVariable String id) {
+        bookingService.cancelBooking(UUID.fromString(id));
+        return ResponseEntity.noContent().build();
     }
 }
