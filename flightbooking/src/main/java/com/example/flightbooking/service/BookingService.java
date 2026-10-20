@@ -211,7 +211,7 @@ public class BookingService {
     // Trong BookingService.java (hoặc SeatService.java)
     @Transactional
     public void releaseSeatHold(String userId, UUID flightId, UUID seatId) {
-        // 1. Kiểm tra thông tin ghế
+        // 1. Kiểm tra tồn tại ghế
         FlightSeat flightSeat = flightSeatRepository.findById(seatId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Ghế không tồn tại"));
 
@@ -219,6 +219,7 @@ public class BookingService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Ghế không thuộc chuyến bay này");
         }
 
+        // 2. Nếu ghế đang ở trạng thái HELD, kiểm tra quyền và trả về AVAILABLE
         if (flightSeat.getStatus() == SeatStatus.HELD) {
             if (flightSeat.getHeldBy() != null && !flightSeat.getHeldBy().equals(userId)) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không có quyền hủy giữ ghế này");
@@ -229,8 +230,7 @@ public class BookingService {
             flightSeatRepository.save(flightSeat);
         }
 
-        // 3. Giải phóng Redis Lock (nếu đang dùng Redis để lock key giữ ghế)
-        String lockKey = "seat_hold:" + flightId + ":" + seatId;
-        redisLockService.unlock(lockKey);
+        // 3. Giải phóng Redis Lock chính xác theo owner và định dạng Key chuẩn
+        redisLockService.releaseSeatLock(flightId.toString(), seatId.toString(), userId);
     }
 }

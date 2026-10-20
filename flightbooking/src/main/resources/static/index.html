@@ -2,149 +2,227 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Test Đặt Vé Máy Bay</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyBooking - Hệ Thống Đặt Vé Máy Bay</title>
     <style>
-        :root{--bg:#0f1720;--panel:#16212c;--line:#26333f;--text:#e7edf3;--muted:#8fa1b3;--accent:#3d8bfd;--ok:#2fbf71;--bad:#e15b5b;--held:#d9a53c}
-        *{box-sizing:border-box}
-        body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;max-width:900px;margin:0 auto}
-        h1{font-size:20px;font-weight:600;margin:0 0 4px}
-        h2{font-size:15px;font-weight:600;color:var(--muted);text-transform:none;margin:0 0 12px}
-        .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
-        .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
-        label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:10px}
-        input,select{width:100%;padding:8px 10px;background:#0c141b;border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px}
-        input:first-child,label:first-child{margin-top:0}
-        button{margin-top:14px;padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer}
-        button:hover{opacity:.9}
-        button.secondary{background:#2a3742}
-        .row{display:flex;gap:10px}
-        .row > div{flex:1}
-        .msg{margin-top:10px;font-size:13px;padding:8px 10px;border-radius:6px;display:none}
-        .msg.ok{display:block;background:rgba(47,191,113,.12);color:var(--ok)}
-        .msg.bad{display:block;background:rgba(225,91,91,.12);color:var(--bad)}
-        .flight-item{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
-        .flight-item:hover{border-color:var(--accent)}
-        .flight-item .num{font-weight:600}
-        .flight-item .info{color:var(--muted);font-size:13px}
-        .flight-item .price{color:var(--ok);font-weight:600}
-        .seat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:12px 0}
-        .seat{padding:10px 0;text-align:center;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid var(--line);background:#0c141b}
-        .seat.available:hover{border-color:var(--accent)}
-        .seat.booked{background:#26333f;color:var(--muted);cursor:not-allowed}
-        .seat.held{background:rgba(217,165,60,.15);color:var(--held);cursor:not-allowed}
-        .seat.selected{background:var(--accent);color:#fff;border-color:var(--accent)}
-        .hidden{display:none}
-        code{background:#0c141b;padding:1px 5px;border-radius:4px;font-size:12px}
-        .passenger-row{display:flex;gap:8px;margin-top:8px}
-        .passenger-row input{flex:1}
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --border: #334155;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --held: #f59e0b;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { margin: 0; background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* Navbar */
+        header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .api-config { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+        .api-config input { padding: 4px 8px; background: #0f172a; border: 1px solid var(--border); border-radius: 4px; color: #fff; width: 180px; }
+
+        .container { max-width: 900px; margin: 30px auto; width: 100%; padding: 0 16px; flex: 1; }
+
+        /* Auth Pages (Center Form) */
+        .auth-container { max-width: 400px; margin: 50px auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 28px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
+        .auth-title { font-size: 20px; font-weight: 600; text-align: center; margin-top: 0; margin-bottom: 20px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+        input, select { width: 100%; padding: 10px 12px; background: #0f172a; border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; outline: none; }
+        input:focus, select:focus { border-color: var(--accent); }
+
+        button { width: 100%; padding: 10px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+        button:hover { background: var(--accent-hover); }
+        button.secondary { background: #334155; color: var(--text); width: auto; }
+        button.danger { background: var(--danger); width: auto; }
+        .auth-switch { text-align: center; font-size: 13px; color: var(--muted); margin-top: 16px; }
+        .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 600; cursor: pointer; }
+
+        /* User Header Bar */
+        .user-bar { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .user-info { font-size: 14px; font-weight: 500; }
+
+        /* Cards & Panels */
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+        .card-title { font-size: 16px; font-weight: 600; margin-top: 0; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .flight-item { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .flight-item:hover { border-color: var(--accent); }
+        .flight-price { color: var(--success); font-size: 18px; font-weight: 700; text-align: right; }
+
+        /* Seat Grid */
+        .seat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 16px 0; }
+        .seat { padding: 10px 0; text-align: center; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; background: #0f172a; border: 1px solid var(--border); }
+        .seat.available { color: var(--success); border-color: rgba(16, 185, 129, 0.4); }
+        .seat.available:hover { background: var(--success); color: white; }
+        .seat.held { background: rgba(245, 158, 11, 0.2); color: var(--held); cursor: not-allowed; }
+        .seat.booked { background: #334155; color: var(--muted); cursor: not-allowed; }
+        .seat.selected { background: var(--accent); color: white; border-color: var(--accent); }
+
+        .toast { padding: 10px; border-radius: 6px; font-size: 13px; margin-top: 12px; display: none; }
+        .toast.success { display: block; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--success); color: var(--success); }
+        .toast.error { display: block; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger); }
+
+        .hidden { display: none !important; }
+        .passenger-row { display: flex; gap: 8px; margin-top: 8px; }
     </style>
 </head>
 <body>
 
-<h1>✈️ Test Đặt Vé Máy Bay</h1>
-<div class="sub">Trang test đơn giản gọi trực tiếp API backend — không đại diện cho giao diện sản phẩm cuối.</div>
+<header>
+    <div class="logo">✈️ SkyBooking</div>
+    <div class="api-config">
+        <span>Backend API:</span>
+        <input id="apiUrl" value="http://localhost:3000">
+    </div>
+</header>
 
-<div class="panel">
-    <h2>0. Địa chỉ API</h2>
-    <label>API URL</label>
-    <input id="apiUrl" value="http://localhost:3000">
-</div>
+<div class="container">
 
-<div class="panel">
-    <h2>1. Tài khoản</h2>
-    <div class="row">
-        <div>
+    <!-- PAGE 1: LOGIN -->
+    <div id="loginPage" class="auth-container">
+        <h2 class="auth-title">Đăng Nhập</h2>
+        <div class="form-group">
             <label>Email</label>
-            <input id="email" value="test@example.com">
+            <input id="loginEmail" value="test@example.com">
         </div>
-        <div>
+        <div class="form-group">
             <label>Mật khẩu</label>
-            <input id="password" type="password" value="123456">
+            <input id="loginPassword" type="password" value="123456">
+        </div>
+        <button onclick="login()">Đăng Nhập</button>
+        <div id="loginMsg" class="toast"></div>
+        <div class="auth-switch">
+            Chưa có tài khoản? <a onclick="showPage('registerPage')">Đăng ký ngay</a>
         </div>
     </div>
-    <label>Họ tên (chỉ cần khi đăng ký)</label>
-    <input id="fullName" value="Nguyen Van A">
-    <button onclick="register()">Đăng ký</button>
-    <button class="secondary" onclick="login()">Đăng nhập</button>
-    <div id="authMsg" class="msg"></div>
-</div>
 
-<div class="panel">
-    <h2>2. Tìm chuyến bay</h2>
-    <div class="row">
-        <div>
-            <label>Sân bay đi</label>
-            <select id="source">
-                <option value="HAN" selected>HAN - Sân bay Nội Bài (Hà Nội)</option>
-                <option value="SGN">SGN - Sân bay Tân Sơn Nhất (TP.HCM)</option>
-                <option value="DAD">DAD - Sân bay Đà Nẵng (Đà Nẵng)</option>
-                <option value="CXR">CXR - Sân bay Cam Ranh (Nha Trang)</option>
-                <option value="PQC">PQC - Sân bay Phú Quốc (Phú Quốc)</option>
-                <option value="HPH">HPH - Sân bay Cát Bi (Hải Phòng)</option>
-                <option value="VCA">VCA - Sân bay Cần Thơ (Cần Thơ)</option>
-                <option value="UIH">UIH - Sân bay Phù Cát (Quy Nhơn)</option>
-            </select>
+    <!-- PAGE 2: REGISTER -->
+    <div id="registerPage" class="auth-container hidden">
+        <h2 class="auth-title">Đăng Ký Tài Khoản</h2>
+        <div class="form-group">
+            <label>Họ và tên</label>
+            <input id="regFullName" value="Nguyen Van A">
         </div>
-        <div>
-            <label>Sân bay đến</label>
-            <select id="dest">
-                <option value="SGN" selected>SGN - Sân bay Tân Sơn Nhất (TP.HCM)</option>
-                <option value="HAN">HAN - Sân bay Nội Bài (Hà Nội)</option>
-                <option value="DAD">DAD - Sân bay Đà Nẵng (Đà Nẵng)</option>
-                <option value="CXR">CXR - Sân bay Cam Ranh (Nha Trang)</option>
-                <option value="PQC">PQC - Sân bay Phú Quốc (Phú Quốc)</option>
-                <option value="HPH">HPH - Sân bay Cát Bi (Hải Phòng)</option>
-                <option value="VCA">VCA - Sân bay Cần Thơ (Cần Thơ)</option>
-                <option value="UIH">UIH - Sân bay Phù Cát (Quy Nhơn)</option>
-            </select>
+        <div class="form-group">
+            <label>Email</label>
+            <input id="regEmail" value="test@example.com">
         </div>
-        <div>
-            <label>Ngày đi</label>
-            <input id="date" type="date">
+        <div class="form-group">
+            <label>Mật khẩu</label>
+            <input id="regPassword" type="password" value="123456">
+        </div>
+        <button onclick="register()">Tạo Tài Khoản</button>
+        <div id="regMsg" class="toast"></div>
+        <div class="auth-switch">
+            Đã có tài khoản? <a onclick="showPage('loginPage')">Đăng nhập</a>
         </div>
     </div>
-    <button onclick="searchFlights()">Tìm chuyến bay</button>
-    <div id="searchMsg" class="msg"></div>
-    <div id="flightList" style="margin-top:12px"></div>
-</div>
 
-<div class="panel hidden" id="seatPanel">
-    <h2>3. Chọn ghế — chuyến <span id="selectedFlightNumber"></span></h2>
-    <div id="seatGrid" class="seat-grid"></div>
-    <div style="font-size:12px;color:var(--muted)">
-        <span style="color:var(--held)">■</span> đang giữ &nbsp;
-        <span style="color:var(--muted)">■</span> đã đặt &nbsp;
-        <span style="color:var(--accent)">■</span> bạn đang chọn
+    <!-- PAGE 3: MAIN APP (Flight Search & Booking) -->
+    <div id="mainPage" class="hidden">
+        <div class="user-bar">
+            <div class="user-info">Xin chào, <span id="userEmailDisplay" style="color: var(--accent);"></span> 👋</div>
+            <button class="secondary" style="padding: 6px 12px; font-size: 12px;" onclick="logout()">Đăng xuất</button>
+        </div>
+
+        <!-- Search Panel -->
+        <div class="card">
+            <div class="card-title">1. Tìm Kiếm Chuyến Bay</div>
+            <div class="grid-3">
+                <div>
+                    <label>Sân bay đi</label>
+                    <select id="source">
+                        <option value="HAN" selected>HAN - Hà Nội</option>
+                        <option value="SGN">SGN - TP.HCM</option>
+                        <option value="DAD">DAD - Đà Nẵng</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Sân bay đến</label>
+                    <select id="dest">
+                        <option value="SGN" selected>SGN - TP.HCM</option>
+                        <option value="HAN">HAN - Hà Nội</option>
+                        <option value="DAD">DAD - Đà Nẵng</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Ngày đi</label>
+                    <input id="date" type="date">
+                </div>
+            </div>
+            <button style="margin-top: 14px;" onclick="searchFlights()">Tìm Chuyến Bay</button>
+            <div id="searchMsg" class="toast"></div>
+            <div id="flightList" style="margin-top: 14px;"></div>
+        </div>
+
+        <!-- Seat Panel -->
+        <div class="card hidden" id="seatPanel">
+            <div class="card-title">2. Chọn Ghế — Chuyến <span id="selectedFlightNumber" style="color:var(--accent)"></span></div>
+            <div id="seatGrid" class="seat-grid"></div>
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+                <span style="color:var(--success)">■</span> Trống &nbsp;
+                <span style="color:var(--held)">■</span> Đang giữ &nbsp;
+                <span style="color:var(--muted)">■</span> Đã đặt &nbsp;
+                <span style="color:var(--accent)">■</span> Đang chọn
+            </div>
+            <div id="passengerForm"></div>
+            <button style="margin-top: 14px;" onclick="createBooking()">Tạo Booking</button>
+            <div id="bookingMsg" class="toast"></div>
+        </div>
+
+        <!-- Payment Panel -->
+        <div class="card hidden" id="confirmPanel">
+            <div class="card-title">3. Thanh Toán Booking</div>
+            <p>Mã Booking ID: <code id="bookingIdText" style="color: #a5b4fc;"></code></p>
+            <div style="display: flex; gap: 10px;">
+                <button style="width: auto;" onclick="confirmBooking()">✅ Thanh Toán Thành Công</button>
+                <button class="danger" onclick="cancelBooking()">❌ Hủy Booking</button>
+            </div>
+            <div id="confirmMsg" class="toast"></div>
+        </div>
     </div>
-    <div id="passengerForm"></div>
-    <button onclick="createBooking()">Tạo booking</button>
-    <div id="bookingMsg" class="msg"></div>
-</div>
 
-<div class="panel hidden" id="confirmPanel">
-    <h2>4. Thanh toán (giả lập)</h2>
-    <div>Booking ID: <code id="bookingIdText"></code></div>
-    <button onclick="confirmBooking()">✅ Giả lập thanh toán thành công</button>
-    <button class="secondary" onclick="cancelBooking()">❌ Hủy booking</button>
-    <div id="confirmMsg" class="msg"></div>
 </div>
 
 <script>
-    let state = { token: null, flightId: null, flightPrice: 0, selectedSeats: [], bookingId: null };
+    const state = {
+        token: null,
+        userEmail: null,
+        flightId: null,
+        flightPrice: 0,
+        selectedSeats: [],
+        bookingId: null
+    };
 
-    document.getElementById('date').valueAsDate = new Date(Date.now() + 24*3600*1000);
+    const nextDay = new Date();
+    nextDay.setDate(nextDay.getDate() + 1);
+    document.getElementById('date').valueAsDate = nextDay;
 
-    function apiUrl(){ return document.getElementById('apiUrl').value.replace(/\/$/,''); }
+    function apiUrl() { return document.getElementById('apiUrl').value.replace(/\/$/, ''); }
 
-    function showMsg(id, text, ok){
-        const el = document.getElementById(id);
-        el.textContent = text;
-        el.className = 'msg ' + (ok ? 'ok' : 'bad');
+    function showPage(pageId) {
+        ['loginPage', 'registerPage', 'mainPage'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+        });
+        document.getElementById(pageId).classList.remove('hidden');
     }
 
-    async function api(path, method, body, auth){
-        const headers = {'Content-Type':'application/json'};
+    function showMsg(id, text, isSuccess) {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.className = 'toast ' + (isSuccess ? 'success' : 'error');
+    }
+
+    async function api(path, method, body, auth = false) {
+        const headers = { 'Content-Type': 'application/json' };
         if (auth && state.token) headers['Authorization'] = 'Bearer ' + state.token;
         const res = await fetch(apiUrl() + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
         const data = await res.json().catch(() => ({}));
@@ -152,50 +230,70 @@
         return data;
     }
 
-    async function register(){
-        try {
-            const data = await api('/auth/register', 'POST', {
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value,
-                fullName: document.getElementById('fullName').value,
-            });
-            state.token = data.accessToken;
-            showMsg('authMsg', 'Đăng ký thành công, đã đăng nhập luôn.', true);
-        } catch(e){ showMsg('authMsg', e.message, false); }
-    }
-
-    async function login(){
+    async function login() {
+        const email = document.getElementById('loginEmail').value;
         try {
             const data = await api('/auth/login', 'POST', {
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value,
+                email: email,
+                password: document.getElementById('loginPassword').value
             });
             state.token = data.accessToken;
-            showMsg('authMsg', 'Đăng nhập thành công.', true);
-        } catch(e){ showMsg('authMsg', e.message, false); }
+            state.userEmail = email;
+            document.getElementById('userEmailDisplay').textContent = email;
+            showPage('mainPage');
+        } catch (e) { showMsg('loginMsg', e.message, false); }
     }
 
-    async function searchFlights(){
+    async function register() {
+        const email = document.getElementById('regEmail').value;
+        try {
+            const data = await api('/auth/register', 'POST', {
+                email: email,
+                password: document.getElementById('regPassword').value,
+                fullName: document.getElementById('regFullName').value
+            });
+            state.token = data.accessToken;
+            state.userEmail = email;
+            document.getElementById('userEmailDisplay').textContent = email;
+            showPage('mainPage');
+        } catch (e) { showMsg('regMsg', e.message, false); }
+    }
+
+    function logout() {
+        state.token = null;
+        state.userEmail = null;
+        showPage('loginPage');
+    }
+
+    async function searchFlights() {
         const list = document.getElementById('flightList');
         list.innerHTML = '';
         try {
             const flights = await api(`/flights/search?sourceAirportCode=${document.getElementById('source').value}&destAirportCode=${document.getElementById('dest').value}&departureDate=${document.getElementById('date').value}`, 'GET');
-            if (flights.length === 0){ showMsg('searchMsg', 'Không tìm thấy chuyến bay nào ngày này.', false); return; }
+            if (!flights || flights.length === 0) { showMsg('searchMsg', 'Không tìm thấy chuyến bay.', false); return; }
             showMsg('searchMsg', `Tìm thấy ${flights.length} chuyến bay.`, true);
+
             flights.forEach(f => {
                 const div = document.createElement('div');
                 div.className = 'flight-item';
-                const src = f.source ? f.source.code : f.sourceCode;
-                const dst = f.destination ? f.destination.code : f.destCode;
+                const fId = f.id || f.flightId;
                 const time = new Date(f.departureTime).toLocaleString('vi-VN');
-                div.innerHTML = `<div><div class="num">${f.flightNumber}</div><div class="info">${src} → ${dst} · ${time} · còn ${f.availableSeats} ghế</div></div><div class="price">${Number(f.price).toLocaleString('vi-VN')}đ</div>`;
-                div.onclick = () => selectFlight(f.id, f.flightNumber, f.price);
+                div.innerHTML = `
+                    <div>
+                        <strong style="font-size:16px;">${f.flightNumber}</strong>
+                        <div style="font-size:13px; color:var(--muted); margin-top:4px;">${f.sourceCode || f.source?.code} → ${f.destCode || f.destination?.code} | ${time}</div>
+                    </div>
+                    <div>
+                        <div class="flight-price">${Number(f.price).toLocaleString('vi-VN')} đ</div>
+                        <button class="secondary" style="padding:4px 8px; font-size:12px; margin-top:4px;" onclick="selectFlight('${fId}', '${f.flightNumber}', ${f.price})">Chọn ghế</button>
+                    </div>
+                `;
                 list.appendChild(div);
             });
-        } catch(e){ showMsg('searchMsg', e.message, false); }
+        } catch (e) { showMsg('searchMsg', e.message, false); }
     }
 
-    async function selectFlight(id, number, price){
+    async function selectFlight(id, number, price) {
         state.flightId = id;
         state.flightPrice = price;
         state.selectedSeats = [];
@@ -205,99 +303,112 @@
         await loadSeats();
     }
 
-    async function loadSeats(){
+    async function loadSeats() {
         const grid = document.getElementById('seatGrid');
         grid.innerHTML = '';
-        const seats = await api(`/flights/${state.flightId}/seats`, 'GET');
-        seats.forEach(s => {
-            const div = document.createElement('div');
-            const status = s.status.toLowerCase();
-            div.className = 'seat ' + status;
-            div.textContent = s.seatNumber;
-            div.dataset.id = s.id;
-            if (status === 'available'){
-                div.onclick = () => toggleSeat(div, s.id);
-            }
-            grid.appendChild(div);
-        });
+        try {
+            const seats = await api(`/flights/${state.flightId}/seats`, 'GET', null, true);
+            seats.forEach(s => {
+                const div = document.createElement('div');
+                const status = (s.status || '').toLowerCase();
+                const seatId = s.id || s.seatId;
+                div.className = 'seat ' + status;
+                div.textContent = s.seatNumber;
+                if (status === 'available') {
+                    div.onclick = () => toggleSeat(div, seatId);
+                }
+                grid.appendChild(div);
+            });
+        } catch (e) { showMsg('bookingMsg', e.message, false); }
     }
 
-    async function toggleSeat(div, seatId){
-        if (!state.token){ showMsg('bookingMsg', 'Bạn cần đăng nhập trước khi giữ ghế.', false); return; }
-        if (div.classList.contains('selected')){
-            div.classList.remove('selected');
-            state.selectedSeats = state.selectedSeats.filter(id => id !== seatId);
-            renderPassengerForm();
+    async function toggleSeat(div, seatId) {
+        const seatNumber = div.textContent;
+
+        // Nếu ghế đang được chọn -> Bấm lại lần nữa nghĩa là BỎ CHỌN (Nhả ghế)
+        if (div.classList.contains('selected')) {
+            await releaseSingleSeat(seatId, seatNumber);
             return;
         }
+
+        // Nếu ghế chưa chọn -> Gửi request GIỮ GHẾ (POST /hold-seat)
         try {
             await api('/bookings/hold-seat', 'POST', { flightId: state.flightId, seatId }, true);
             div.classList.add('selected');
             state.selectedSeats.push(seatId);
-            showMsg('bookingMsg', `Đã giữ ghế ${div.textContent} trong 15 phút.`, true);
+            showMsg('bookingMsg', `Đã giữ ghế ${seatNumber} trong 15 phút!`, true);
             renderPassengerForm();
-        } catch(e){ showMsg('bookingMsg', e.message, false); }
+        } catch (e) {
+            showMsg('bookingMsg', e.message, false);
+        }
     }
 
-    function renderPassengerForm(){
+    // Gọi API DELETE nhả 1 ghế giữ và cập nhật lại sơ đồ ghế
+    async function releaseSingleSeat(seatId, seatNumber) {
+        try {
+            await api('/bookings/' + state.flightId + '/seats/' + seatId + '/hold', 'DELETE', null, true);
+
+            // Cập nhật lại state danh sách ghế đang chọn
+            state.selectedSeats = state.selectedSeats.filter(id => id !== seatId);
+
+            showMsg('bookingMsg', 'Đã nhả giữ chỗ ghế ' + seatNumber + ' thành công!', true);
+
+            // Tải lại sơ đồ ghế từ Server để cập nhật màu sắc ghế
+            await loadSeats();
+            renderPassengerForm();
+        } catch (e) {
+            showMsg('bookingMsg', 'Lỗi nhả ghế: ' + e.message, false);
+        }
+    }
+
+    function renderPassengerForm() {
         const form = document.getElementById('passengerForm');
-        form.innerHTML = state.selectedSeats.length ? '<label>Thông tin hành khách (theo thứ tự ghế đã chọn)</label>' : '';
-        state.selectedSeats.forEach((seatId, i) => {
+        form.innerHTML = state.selectedSeats.length ? '<label style="margin-top:12px; font-size:13px;">Thông tin hành khách:</label>' : '';
+        state.selectedSeats.forEach((_, i) => {
             const row = document.createElement('div');
             row.className = 'passenger-row';
             row.innerHTML = `
-      <input placeholder="Họ tên" data-field="fullName" data-index="${i}">
-      <input placeholder="Số hộ chiếu" data-field="passportNumber" data-index="${i}">
-      <input type="date" data-field="dob" data-index="${i}">`;
+                <input placeholder="Họ tên" data-field="fullName" data-index="${i}">
+                <input placeholder="Số hộ chiếu/CCCD" data-field="passportNumber" data-index="${i}">
+                <input type="date" data-field="dob" data-index="${i}">
+            `;
             form.appendChild(row);
         });
     }
 
-    async function createBooking(){
-        if (state.selectedSeats.length === 0){ showMsg('bookingMsg', 'Chọn ít nhất 1 ghế trước.', false); return; }
-
-        // Sửa lại selector bọc ngoặc kép chuẩn
+    async function createBooking() {
+        if (state.selectedSeats.length === 0) { showMsg('bookingMsg', 'Chưa chọn ghế nào.', false); return; }
         const passengers = state.selectedSeats.map((_, i) => ({
-            fullName: document.querySelector(`[data-field="fullName"][data-index="${i}"]`)?.value || '',
-            passportNumber: document.querySelector(`[data-field="passportNumber"][data-index="${i}"]`)?.value || '',
-            dob: document.querySelector(`[data-field="dob"][data-index="${i}"]`)?.value || '',
+            fullName: document.querySelector(`[data-field="fullName"][data-index="${i}"]`)?.value || 'Nguyen Van A',
+            passportNumber: document.querySelector(`[data-field="passportNumber"][data-index="${i}"]`)?.value || 'B1234567',
+            dob: document.querySelector(`[data-field="dob"][data-index="${i}"]`)?.value || '1995-01-01'
         }));
 
         try {
             const booking = await api('/bookings', 'POST', { flightId: state.flightId, seatIds: state.selectedSeats, passengers }, true);
-
-            console.log("Response từ Backend:", booking);
-            // Kiểm tra kĩ trường id trả về từ Backend (hỗ trợ cả booking.id hoặc booking.bookingId)
             state.bookingId = booking.id || booking.bookingId;
-
-            if (!state.bookingId) {
-                throw new Error("Backend không trả về Booking ID hợp lệ.");
-            }
-
-            showMsg('bookingMsg', 'Tạo booking thành công, trạng thái: pending.', true);
+            showMsg('bookingMsg', 'Tạo booking thành công! Trạng thái: PENDING', true);
             document.getElementById('confirmPanel').classList.remove('hidden');
             document.getElementById('bookingIdText').textContent = state.bookingId;
-        } catch(e){ showMsg('bookingMsg', e.message, false); }
+        } catch (e) { showMsg('bookingMsg', e.message, false); }
     }
 
-    async function confirmBooking(){
-        if (!state.bookingId) { showMsg('confirmMsg', 'Chưa có Booking ID.', false); return; }
+    async function confirmBooking() {
+        if (!state.bookingId) return;
         try {
-            // SỬA LỖI: Truyền auth = true để gửi JWT Token xác thực
             await api(`/bookings/${state.bookingId}/confirm`, 'POST', null, true);
-            showMsg('confirmMsg', 'Thanh toán thành công! Booking đã confirmed, ghế đã booked.', true);
-            loadSeats();
-        } catch(e){ showMsg('confirmMsg', e.message, false); }
+            showMsg('confirmMsg', 'Thanh toán thành công! Trạng thái: CONFIRMED', true);
+            await loadSeats();
+        } catch (e) { showMsg('confirmMsg', e.message, false); }
     }
 
-    async function cancelBooking(){
-        if (!state.bookingId) { showMsg('confirmMsg', 'Chưa có Booking ID.', false); return; }
+    async function cancelBooking() {
+        if (!state.bookingId) return;
         try {
-            // SỬA LỖI: Truyền auth = true để gửi JWT Token xác thực
             await api(`/bookings/${state.bookingId}/cancel`, 'POST', null, true);
-            showMsg('confirmMsg', 'Đã hủy booking, ghế trở lại available.', true);
-            loadSeats();
-        } catch(e){ showMsg('confirmMsg', e.message, false); }
+            showMsg('confirmMsg', 'Đã hủy booking thành công!', true);
+            await loadSeats();
+        } catch (e) { showMsg('confirmMsg', e.message, false); }
     }
 </script>
 </body>

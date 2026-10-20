@@ -12,7 +12,7 @@ spring:
     hibernate:
       # update: tự tạo/cập nhật bảng theo entity - tiện cho môi trường học tập/dev
       # Khi lên production nên đổi sang "validate" và dùng công cụ migration (Flyway/Liquibase)
-      ddl-auto: update
+      ddl-auto: create-drop
     show-sql: false
     properties:
       hibernate:
