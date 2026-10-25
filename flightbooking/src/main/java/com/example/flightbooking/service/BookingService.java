@@ -7,7 +7,6 @@ import com.example.flightbooking.entity.*;
 import com.example.flightbooking.exception.ApiException;
 import com.example.flightbooking.repository.*;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +16,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class BookingService {
@@ -26,110 +24,100 @@ public class BookingService {
     private final FlightSeatRepository flightSeatRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
+    private final AncillaryItemRepository ancillaryItemRepository;
     private final RedisLockService redisLockService;
+    private final PricingService pricingService;
     private final long holdSeconds;
 
-    public BookingService(FlightRepository flightRepository, FlightSeatRepository flightSeatRepository,
-                           BookingRepository bookingRepository, UserRepository userRepository,
-                           RedisLockService redisLockService,
-                           @Value("${app.seat-hold-seconds}") long holdSeconds) {
+    public BookingService(FlightRepository flightRepository,
+                          FlightSeatRepository flightSeatRepository,
+                          BookingRepository bookingRepository,
+                          UserRepository userRepository,
+                          AncillaryItemRepository ancillaryItemRepository,
+                          RedisLockService redisLockService,
+                          PricingService pricingService,
+                          @Value("${app.seat-hold-seconds}") long holdSeconds) {
         this.flightRepository = flightRepository;
         this.flightSeatRepository = flightSeatRepository;
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
+        this.ancillaryItemRepository = ancillaryItemRepository;
         this.redisLockService = redisLockService;
+        this.pricingService = pricingService;
         this.holdSeconds = holdSeconds;
     }
 
-    /**
-     * BƯỚC 1 - Giữ ghế tạm thời.
-     * Lớp 1: Redis lock (nhanh, chặn ngay từ đầu).
-     * Lớp 2: PESSIMISTIC_WRITE lock trong transaction (tương đương SELECT ... FOR UPDATE),
-     *        double-check trạng thái ghế ngay trước khi ghi.
-     */
+    /** BƯỚC 1: Giữ ghế tạm thời (Giữ nguyên) */
     @Transactional
     public FlightSeat holdSeat(String userId, HoldSeatRequest req) {
         UUID flightId = UUID.fromString(req.getFlightId());
         UUID seatId = UUID.fromString(req.getSeatId());
-
-        // --- Lớp 1: Redis distributed lock ---
-        boolean acquired = redisLockService.acquireSeatLock(req.getFlightId(), req.getSeatId(), userId, holdSeconds);
-        if (!acquired) {
-            throw ApiException.conflict("Ghế này đang được người khác giữ, vui lòng chọn ghế khác");
+        boolean locked = redisLockService.acquireSeatLock(req.getFlightId(), req.getSeatId(), userId, holdSeconds);
+        if (!locked) {
+            throw ApiException.badRequest("Ghế này đang được người khác chọn hoặc xử lý");
         }
-
         try {
-            // --- Lớp 2: PESSIMISTIC_WRITE (SELECT ... FOR UPDATE) + double check ---
             FlightSeat seat = flightSeatRepository.findByIdForUpdate(seatId)
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy ghế"));
 
-            if (!seat.getFlight().getId().equals(flightId)) {
-                throw ApiException.badRequest("Ghế không thuộc chuyến bay này");
+            Instant now = Instant.now();
+            if (seat.getStatus() == SeatStatus.BOOKED) {
+                throw ApiException.badRequest("Ghế đã được đặt chính thức");
             }
 
-            Instant now = Instant.now();
-            boolean isFreeToTake = seat.getStatus() == SeatStatus.AVAILABLE
-                    || (seat.getStatus() == SeatStatus.HELD && seat.getHeldUntil() != null && seat.getHeldUntil().isBefore(now));
-
-            if (!isFreeToTake) {
-                throw ApiException.conflict("Ghế đã được người khác giữ hoặc đặt");
+            if (seat.getStatus() == SeatStatus.HELD && seat.getHeldUntil() != null && seat.getHeldUntil().isAfter(now)) {
+                if (!userId.equals(seat.getHeldBy())) {
+                    throw ApiException.badRequest("Ghế đang được giữ bởi người dùng khác");
+                }
             }
 
             seat.setStatus(SeatStatus.HELD);
             seat.setHeldBy(userId);
             seat.setHeldUntil(now.plusSeconds(holdSeconds));
-            flightSeatRepository.save(seat);
 
-            return seat;
+            return flightSeatRepository.save(seat);
         } catch (RuntimeException ex) {
-            // Nếu có lỗi ở tầng DB, phải nhả Redis lock ngay để không "khóa chết" ghế
             redisLockService.releaseSeatLock(req.getFlightId(), req.getSeatId(), userId);
             throw ex;
         }
     }
 
-    /**
-     * BƯỚC 2 - Tạo booking "pending" sau khi user điền thông tin hành khách.
-     * Yêu cầu tất cả ghế đang được đúng userId này giữ.
-     */
+    /** BƯỚC 2: Tạo Booking PENDING (Đã sửa lỗi giữ chỗ hết hạn + Dynamic Pricing + Ancillaries) */
     @Transactional
     public Booking createBooking(String userId, CreateBookingRequest req) {
-        if (req.getSeatIds().size() != req.getPassengers().size()) {
-            throw ApiException.badRequest("Số lượng ghế và số lượng hành khách phải bằng nhau");
-        }
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy người dùng"));
 
-        UUID flightId = UUID.fromString(req.getFlightId());
-        Flight flight = flightRepository.findById(flightId)
+        Flight flight = flightRepository.findById(UUID.fromString(req.getFlightId()))
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy chuyến bay"));
 
-        User user = userRepository.findById(UUID.fromString(userId))
-                .orElseThrow(() -> ApiException.notFound("Không tìm thấy user"));
-
-        List<UUID> seatUuids = req.getSeatIds().stream().map(UUID::fromString).collect(Collectors.toList());
+        List<UUID> seatUuids = req.getSeatIds().stream().map(UUID::fromString).toList();
         List<FlightSeat> seats = flightSeatRepository.findByIdIn(seatUuids);
 
-        if (seats.size() != seatUuids.size()) {
-            throw ApiException.notFound("Một số ghế không tồn tại");
+        if (seats.size() != req.getSeatIds().size()) {
+            throw ApiException.badRequest("Danh sách ghế không hợp lệ");
         }
 
+        Instant now = Instant.now();
         for (FlightSeat seat : seats) {
-            if (seat.getStatus() != SeatStatus.HELD || !userId.equals(seat.getHeldBy())) {
-                throw ApiException.conflict(
-                        "Ghế " + seat.getSeatNumber() + " không còn được bạn giữ (có thể đã hết hạn), vui lòng chọn lại");
+            if (seat.getStatus() != SeatStatus.HELD
+                    || !userId.equals(seat.getHeldBy())
+                    || seat.getHeldUntil() == null
+                    || seat.getHeldUntil().isBefore(now)) {
+                throw ApiException.badRequest("Ghế " + seat.getSeatNumber() + " đã hết thời gian giữ chỗ hoặc không thuộc về bạn");
             }
         }
 
-        BigDecimal totalPrice = flight.getPrice().multiply(BigDecimal.valueOf(seats.size()));
+        BigDecimal dynamicSeatUnitPrice = pricingService.calculateCurrentPrice(flight.getId());
+        BigDecimal totalSeatPrice = dynamicSeatUnitPrice.multiply(BigDecimal.valueOf(seats.size()));
 
         Booking booking = new Booking();
         booking.setUser(user);
         booking.setFlight(flight);
         booking.setStatus(BookingStatus.PENDING);
-        booking.setTotalPrice(totalPrice);
 
-        // Map seatId -> passengerDto tương ứng theo thứ tự trong mảng
+        // Gán ghế và hành khách
         Map<String, PassengerDto> seatIdToPassenger = mapSeatToPassenger(req);
-
         for (FlightSeat seat : seats) {
             BookingSeat bs = new BookingSeat();
             bs.setBooking(booking);
@@ -145,6 +133,28 @@ public class BookingService {
             booking.getPassengers().add(passenger);
         }
 
+        BigDecimal totalAncillaryPrice = BigDecimal.ZERO;
+        if (req.getAncillaries() != null && !req.getAncillaries().isEmpty()) {
+            for (CreateBookingRequest.AncillaryRequest ancReq : req.getAncillaries()) {
+                AncillaryItem item = ancillaryItemRepository.findById(UUID.fromString(ancReq.getAncillaryItemId()))
+                        .orElseThrow(() -> ApiException.notFound("Không tìm thấy dịch vụ: " + ancReq.getAncillaryItemId()));
+
+                BigDecimal itemTotal = item.getBasePrice().multiply(BigDecimal.valueOf(ancReq.getQuantity()));
+                totalAncillaryPrice = totalAncillaryPrice.add(itemTotal);
+
+                BookingAncillary detail = new BookingAncillary();
+                detail.setBooking(booking);
+                detail.setAncillaryItem(item);
+                detail.setQuantity(ancReq.getQuantity());
+                detail.setPrice(item.getBasePrice()); // Lưu lại giá gốc thời điểm mua
+
+                booking.getAncillaries().add(detail);
+            }
+        }
+
+        // Tổng chi phí = Giá vé động + Dịch vụ đính kèm
+        booking.setTotalPrice(totalSeatPrice.add(totalAncillaryPrice));
+
         return bookingRepository.save(booking);
     }
 
@@ -156,11 +166,7 @@ public class BookingService {
         return map;
     }
 
-    /**
-     * BƯỚC 3 - Xác nhận thanh toán thành công (gọi từ payment webhook trong thực tế).
-     * Đây là điểm ghi nhận cuối: booking -> CONFIRMED, ghế -> BOOKED.
-     * Lớp 3 (unique constraint booking_seats.flight_seat_id) tự chặn nếu có gì lọt qua 2 lớp trên.
-     */
+    /** BƯỚC 3: Xác nhận thanh toán. */
     @Transactional
     public Booking confirmBooking(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
@@ -186,7 +192,7 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    /** Hủy booking (thanh toán thất bại/user tự hủy) -> nhả ghế về AVAILABLE ngay. */
+    /** Hủy Booking */
     @Transactional
     public void cancelBooking(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
@@ -208,29 +214,18 @@ public class BookingService {
         bookingRepository.save(booking);
     }
 
-    // Trong BookingService.java (hoặc SeatService.java)
     @Transactional
     public void releaseSeatHold(String userId, UUID flightId, UUID seatId) {
-        // 1. Kiểm tra tồn tại ghế
-        FlightSeat flightSeat = flightSeatRepository.findById(seatId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Ghế không tồn tại"));
+        FlightSeat seat = flightSeatRepository.findById(seatId)
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy ghế"));
 
-        if (!flightSeat.getFlight().getId().equals(flightId)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Ghế không thuộc chuyến bay này");
+        if (seat.getStatus() == SeatStatus.HELD && userId.equals(seat.getHeldBy())) {
+            seat.setStatus(SeatStatus.AVAILABLE);
+            seat.setHeldBy(null);
+            seat.setHeldUntil(null);
+            flightSeatRepository.save(seat);
+
+            redisLockService.releaseSeatLock(flightId.toString(), seatId.toString(), userId);
         }
-
-        // 2. Nếu ghế đang ở trạng thái HELD, kiểm tra quyền và trả về AVAILABLE
-        if (flightSeat.getStatus() == SeatStatus.HELD) {
-            if (flightSeat.getHeldBy() != null && !flightSeat.getHeldBy().equals(userId)) {
-                throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không có quyền hủy giữ ghế này");
-            }
-            flightSeat.setStatus(SeatStatus.AVAILABLE);
-            flightSeat.setHeldBy(null);
-            flightSeat.setHeldUntil(null);
-            flightSeatRepository.save(flightSeat);
-        }
-
-        // 3. Giải phóng Redis Lock chính xác theo owner và định dạng Key chuẩn
-        redisLockService.releaseSeatLock(flightId.toString(), seatId.toString(), userId);
     }
 }

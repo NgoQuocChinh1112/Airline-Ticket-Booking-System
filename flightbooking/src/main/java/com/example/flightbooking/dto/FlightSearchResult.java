@@ -1,5 +1,7 @@
 package com.example.flightbooking.dto;
 
+import com.example.flightbooking.entity.Flight;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -29,6 +31,20 @@ public class FlightSearchResult {
         this.departureTime = departureTime;
         this.arrivalTime = arrivalTime;
         this.price = price;
+        this.availableSeats = availableSeats;
+    }
+
+    public FlightSearchResult(Flight flight, BigDecimal dynamicPrice, long availableSeats) {
+        this.id = flight.getId().toString();
+        this.flightNumber = flight.getFlightNumber();
+        this.sourceCode = flight.getSourceAirport().getCode();
+        this.sourceCity = flight.getSourceAirport().getCity();
+        this.destCode = flight.getDestAirport().getCode();
+        this.destCity = flight.getDestAirport().getCity();
+        this.aircraft = flight.getAircraft().getName();
+        this.departureTime = flight.getDepartureTime();
+        this.arrivalTime = flight.getArrivalTime();
+        this.price = dynamicPrice;
         this.availableSeats = availableSeats;
     }
 

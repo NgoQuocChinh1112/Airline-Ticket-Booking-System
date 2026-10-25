@@ -10,6 +10,7 @@ import com.example.flightbooking.repository.FlightRepository;
 import com.example.flightbooking.repository.FlightSeatRepository;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -23,15 +24,22 @@ public class FlightService {
     private final FlightRepository flightRepository;
     private final AirportRepository airportRepository;
     private final FlightSeatRepository flightSeatRepository;
+    private final PricingService pricingService;
 
-    public FlightService(FlightRepository flightRepository, AirportRepository airportRepository,
-                          FlightSeatRepository flightSeatRepository) {
+    public FlightService(FlightRepository flightRepository,
+                         AirportRepository airportRepository,
+                          FlightSeatRepository flightSeatRepository,
+                         PricingService pricingService) {
         this.flightRepository = flightRepository;
         this.airportRepository = airportRepository;
         this.flightSeatRepository = flightSeatRepository;
+        this.pricingService = pricingService;
     }
 
-    public List<FlightSearchResult> search(String sourceCode, String destCode, String departureDate, String sortBy) {
+    public List<FlightSearchResult> search(String sourceCode,
+                                           String destCode,
+                                           String departureDate,
+                                           String sortBy) {
         Airport source = airportRepository.findByCode(sourceCode.toUpperCase())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy sân bay đi: " + sourceCode));
         Airport dest = airportRepository.findByCode(destCode.toUpperCase())
@@ -51,12 +59,10 @@ public class FlightService {
             long available = flightSeatRepository.findByFlightIdOrderBySeatNumberAsc(f.getId()).stream()
                     .filter(s -> s.getStatus() == SeatStatus.AVAILABLE)
                     .count();
-            return new FlightSearchResult(
-                    f.getId().toString(), f.getFlightNumber(),
-                    f.getSourceAirport().getCode(), f.getSourceAirport().getCity(),
-                    f.getDestAirport().getCode(), f.getDestAirport().getCity(),
-                    f.getAircraft().getName(),
-                    f.getDepartureTime(), f.getArrivalTime(), f.getPrice(), available);
+
+            BigDecimal dynamicPrice = pricingService.calculateCurrentPrice(f.getId());
+
+            return new FlightSearchResult(f, dynamicPrice, available);
         }).collect(Collectors.toList());
     }
 

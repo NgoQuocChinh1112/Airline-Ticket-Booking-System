@@ -39,6 +39,9 @@ public class Booking {
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Passenger> passengers = new ArrayList<>();
 
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookingAncillary> ancillaries = new ArrayList<>();
+
     public Booking() {}
 
     public UUID getId() { return id; }
@@ -64,4 +67,7 @@ public class Booking {
 
     public List<Passenger> getPassengers() { return passengers; }
     public void setPassengers(List<Passenger> passengers) { this.passengers = passengers; }
+
+    public List<BookingAncillary> getAncillaries() { return ancillaries; }
+    public void setAncillaries(List<BookingAncillary> ancillaries) { this.ancillaries = ancillaries; }
 }
