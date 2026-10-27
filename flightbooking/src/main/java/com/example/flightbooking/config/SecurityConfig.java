@@ -38,12 +38,14 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Cấp quyền truy cập cho giao diện Frontend và trang lỗi
-                        .requestMatchers("/", "/index.html", "/error", "/css/**", "/js/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/error", "/payment-result.html", "/css/**", "/js/**").permitAll()
                         // Các API Public
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/flights/**").permitAll()
-                        .requestMatchers("/bookings/*/confirm", "/bookings/*/cancel").permitAll()
+                        .requestMatchers("/payment/vnpay/ipn").permitAll()
+                        // .requestMatchers("/bookings/*/confirm", "/bookings/*/cancel").permitAll()
                         .requestMatchers("/admin/**").permitAll()
+                        .requestMatchers("/payments/vnpay/status/*").permitAll()
                         // Mọi API khác đều phải có thẻ JWT
                         .requestMatchers(
                             "/swagger-ui/**",

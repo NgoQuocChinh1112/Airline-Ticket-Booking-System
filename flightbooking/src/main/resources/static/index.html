@@ -180,14 +180,37 @@
 
         <!-- Payment Panel -->
         <div class="card hidden" id="confirmPanel">
-            <div class="card-title">3. Thanh Toán Booking</div>
-            <p>Mã Booking ID: <code id="bookingIdText" style="color: #a5b4fc;"></code></p>
-            <div style="display: flex; gap: 10px;">
-                <button style="width: auto;" onclick="confirmBooking()">✅ Thanh Toán Thành Công</button>
-                <button class="danger" onclick="cancelBooking()">❌ Hủy Booking</button>
-            </div>
-            <div id="confirmMsg" class="toast"></div>
-        </div>
+    <div class="card-title">3. Thanh Toán</div>
+
+    <p>
+        Mã giao dịch:
+        <code id="paymentCodeText" style="color: #a5b4fc;"></code>
+    </p>
+
+    <p>
+        Tổng tiền:
+        <strong id="paymentAmountText" style="color: var(--success);"></strong>
+    </p>
+
+    <p id="paymentStatusText" style="color: var(--muted);">
+        Giao dịch đang chờ thanh toán.
+    </p>
+
+    <div style="display: flex; gap: 10px;">
+        <button style="width: auto;" onclick="goToVnPay()">
+            💳 Thanh toán qua VNPAY
+        </button>
+
+        <button class="secondary" onclick="completeSandboxPayment()">
+            ✅ Giả lập thanh toán thành công
+        </button>
+
+        <button class="danger" onclick="cancelBooking()">
+            ❌ Hủy Booking
+        </button>
+    </div>
+
+    <div id="confirmMsg" class="toast"></div>
     </div>
 
 </div>
@@ -199,7 +222,9 @@
         flightId: null,
         flightPrice: 0,
         selectedSeats: [],
-        bookingId: null
+        bookingId: null,
+        paymentCode: null,
+        checkoutUrl: null
     };
 
     const nextDay = new Date();
@@ -377,29 +402,72 @@
     }
 
     async function createBooking() {
-        if (state.selectedSeats.length === 0) { showMsg('bookingMsg', 'Chưa chọn ghế nào.', false); return; }
-        const passengers = state.selectedSeats.map((_, i) => ({
-            fullName: document.querySelector(`[data-field="fullName"][data-index="${i}"]`)?.value || 'Nguyen Van A',
-            passportNumber: document.querySelector(`[data-field="passportNumber"][data-index="${i}"]`)?.value || 'B1234567',
-            dob: document.querySelector(`[data-field="dob"][data-index="${i}"]`)?.value || '1995-01-01'
-        }));
-
-        try {
-            const booking = await api('/bookings', 'POST', { flightId: state.flightId, seatIds: state.selectedSeats, passengers }, true);
-            state.bookingId = booking.id || booking.bookingId;
-            showMsg('bookingMsg', 'Tạo booking thành công! Trạng thái: PENDING', true);
-            document.getElementById('confirmPanel').classList.remove('hidden');
-            document.getElementById('bookingIdText').textContent = state.bookingId;
-        } catch (e) { showMsg('bookingMsg', e.message, false); }
+    if (state.selectedSeats.length === 0) {
+        showMsg('bookingMsg', 'Chưa chọn ghế nào.', false);
+        return;
     }
 
-    async function confirmBooking() {
-        if (!state.bookingId) return;
-        try {
-            await api(`/bookings/${state.bookingId}/confirm`, 'POST', null, true);
-            showMsg('confirmMsg', 'Thanh toán thành công! Trạng thái: CONFIRMED', true);
-            await loadSeats();
-        } catch (e) { showMsg('confirmMsg', e.message, false); }
+    const passengers = state.selectedSeats.map((_, i) => ({
+        fullName: document.querySelector(
+            `[data-field="fullName"][data-index="${i}"]`
+        )?.value || 'Nguyen Van A',
+
+        passportNumber: document.querySelector(
+            `[data-field="passportNumber"][data-index="${i}"]`
+        )?.value || 'B1234567',
+
+        dob: document.querySelector(
+            `[data-field="dob"][data-index="${i}"]`
+        )?.value || '1995-01-01'
+    }));
+
+    try {
+        const booking = await api('/bookings', 'POST', {
+            flightId: state.flightId,
+            seatIds: state.selectedSeats,
+            passengers
+        }, true);
+
+        state.bookingId = booking.id;
+
+        const payment = await api('/payments', 'POST', {
+            bookingId: state.bookingId
+        }, true);
+
+        state.paymentCode = payment.paymentCode;
+
+        state.checkoutUrl = payment.checkoutUrl;
+
+        if (!state.checkoutUrl) {
+            throw new Error('Không nhận được URL thanh toán VNPay');
+        }
+
+        document.getElementById('paymentCodeText').textContent =
+            'Giao dịch VNPay được tạo. Bấm nút để tiếp tục thanh toán trước ' +
+            new Date(payment.expiresAt).toLocaleString('vi-VN');
+
+        document.getElementById('paymentAmountText').textContent =
+            Number(payment.amount).toLocaleString('vi-VN') + ' đ';
+
+        document.getElementById('paymentStatusText').textContent =
+            'Thanh toán trước ' +
+            new Date(payment.expiresAt).toLocaleString('vi-VN');
+
+        document.getElementById('confirmPanel').classList.remove('hidden');
+
+        showMsg('bookingMsg', 'Đã tạo giao dịch thanh toán.', true);
+    } catch (e) {
+        showMsg('bookingMsg', e.message, false);
+    }
+    }
+
+    function goToVnPay() {
+    if (!state.checkoutUrl) {
+        showMsg('confirmMsg', 'Chưa có URL thanh toán VNPay.', false);
+        return;
+    }
+
+    window.location.assign(state.checkoutUrl);
     }
 
     async function cancelBooking() {
@@ -409,6 +477,32 @@
             showMsg('confirmMsg', 'Đã hủy booking thành công!', true);
             await loadSeats();
         } catch (e) { showMsg('confirmMsg', e.message, false); }
+    }
+
+    async function completeSandboxPayment() {
+    if (!state.paymentCode) {
+        showMsg('confirmMsg', 'Chưa có giao dịch thanh toán.', false);
+        return;
+    }
+
+    try {
+        const payment = await api(
+            `/payments/${encodeURIComponent(state.paymentCode)}/sandbox/complete`,
+            'POST',
+            null,
+            true
+        );
+
+        showMsg(
+            'confirmMsg',
+            `Đã giả lập thành công: payment ${payment.status}, booking ${payment.bookingStatus}`,
+            true
+        );
+
+        await loadSeats();
+    } catch (e) {
+        showMsg('confirmMsg', e.message, false);
+    }
     }
 </script>
 </body>

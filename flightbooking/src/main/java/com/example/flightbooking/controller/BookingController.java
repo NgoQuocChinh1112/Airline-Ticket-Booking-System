@@ -36,15 +36,20 @@ public class BookingController {
         return new BookingResponse(booking);
     }
 
-    @PostMapping("/{id}/confirm")
-    public BookingResponse confirmBooking(@PathVariable String id) {
-        Booking booking = bookingService.confirmBooking(UUID.fromString(id));
-        return new BookingResponse(booking);
-    }
+    // @PostMapping("/{id}/confirm")
+    // public BookingResponse confirmBooking(@PathVariable String id) {
+    //     Booking booking = bookingService.confirmBooking(UUID.fromString(id));
+    //     return new BookingResponse(booking);
+    //}
 
     @PostMapping("/{id}/cancel")
-    public void cancelBooking(@PathVariable String id) {
-        bookingService.cancelBooking(UUID.fromString(id));
+    public void cancelBooking(
+        Authentication authentication,
+        @PathVariable String id
+    )   {
+        String userId = (String) authentication.getPrincipal();
+
+        bookingService.cancelBooking(UUID.fromString(id), userId);
     }
     @DeleteMapping("/{flightId}/seats/{seatId}/hold")
     public ResponseEntity<Void> releaseSeatHold(

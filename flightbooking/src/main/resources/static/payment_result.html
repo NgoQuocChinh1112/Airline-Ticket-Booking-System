@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Kết quả thanh toán</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: #0f172a;
+            color: #f8fafc;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            width: min(440px, calc(100% - 32px));
+            padding: 32px;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            background: #1e293b;
+            text-align: center;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1 id="title">Đang kiểm tra thanh toán…</h1>
+    <p id="message">Vui lòng chờ hệ thống xác nhận vé.</p>
+    <a href="/">Quay về SkyBooking</a>
+</main>
+
+<script>
+    const parameters = new URLSearchParams(window.location.search);
+
+    const succeeded =
+        parameters.get('vnp_ResponseCode') === '00' &&
+        parameters.get('vnp_TransactionStatus') === '00';
+
+    document.getElementById('title').textContent = succeeded
+        ? 'Thanh toán đã được ghi nhận'
+        : 'Thanh toán chưa thành công';
+
+    document.getElementById('message').textContent = succeeded
+        ? 'Hệ thống đang xác nhận booking của bạn.'
+        : 'Bạn có thể quay lại SkyBooking để thử lại hoặc chọn phương thức khác.';
+</script>
+</body>
+</html>

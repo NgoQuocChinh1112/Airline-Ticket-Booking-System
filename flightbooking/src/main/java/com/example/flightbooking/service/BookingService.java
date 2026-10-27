@@ -168,35 +168,65 @@ public class BookingService {
 
     /** BƯỚC 3: Xác nhận thanh toán. */
     @Transactional
-    public Booking confirmBooking(UUID bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> ApiException.notFound("Không tìm thấy booking"));
+public Booking confirmBooking(UUID bookingId) {
+    Booking booking = bookingRepository.findById(bookingId)
+            .orElseThrow(() -> ApiException.notFound("Không tìm thấy booking"));
 
-        if (booking.getStatus() != BookingStatus.PENDING) {
-            throw ApiException.badRequest("Booking đang ở trạng thái " + booking.getStatus() + ", không thể xác nhận");
-        }
-
-        booking.setStatus(BookingStatus.CONFIRMED);
-
-        for (BookingSeat bs : booking.getSeats()) {
-            FlightSeat seat = bs.getFlightSeat();
-            seat.setStatus(SeatStatus.BOOKED);
-            seat.setHeldBy(null);
-            seat.setHeldUntil(null);
-            flightSeatRepository.save(seat);
-
-            redisLockService.releaseSeatLock(
-                    booking.getFlight().getId().toString(), seat.getId().toString(), booking.getUser().getId().toString());
-        }
-
-        return bookingRepository.save(booking);
+    if (booking.getStatus() != BookingStatus.PENDING) {
+        throw ApiException.badRequest(
+                "Booking đang ở trạng thái " + booking.getStatus() + ", không thể xác nhận"
+        );
     }
+
+    Instant now = Instant.now();
+
+    for (BookingSeat bookingSeat : booking.getSeats()) {
+        FlightSeat seat = flightSeatRepository
+                .findByIdForUpdate(bookingSeat.getFlightSeat().getId())
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy ghế"));
+
+        boolean seatIsStillHeldByCustomer =
+                seat.getStatus() == SeatStatus.HELD
+                && booking.getUser().getId().toString().equals(seat.getHeldBy())
+                && seat.getHeldUntil() != null
+                && seat.getHeldUntil().isAfter(now);
+
+        if (!seatIsStillHeldByCustomer) {
+            throw ApiException.badRequest(
+                    "Ghế " + seat.getSeatNumber() + " đã hết thời gian giữ chỗ"
+            );
+        }
+
+        seat.setStatus(SeatStatus.BOOKED);
+        seat.setHeldBy(null);
+        seat.setHeldUntil(null);
+        flightSeatRepository.save(seat);
+
+        redisLockService.releaseSeatLock(
+                booking.getFlight().getId().toString(),
+                seat.getId().toString(),
+                booking.getUser().getId().toString()
+        );
+    }
+
+    booking.setStatus(BookingStatus.CONFIRMED);
+
+    return bookingRepository.save(booking);
+}
 
     /** Hủy Booking */
     @Transactional
-    public void cancelBooking(UUID bookingId) {
+    public void cancelBooking(UUID bookingId, String userId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> ApiException.notFound("Không tìm thấy booking"));
+            .orElseThrow(() -> ApiException.notFound("Không tìm thấy booking"));
+
+        if (!booking.getUser().getId().toString().equals(userId)) {
+            throw ApiException.unauthorized("Bạn không có quyền hủy booking này");
+        }
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw ApiException.badRequest("Chỉ có thể hủy booking đang chờ thanh toán");
+        }
 
         booking.setStatus(BookingStatus.CANCELLED);
 
@@ -208,7 +238,10 @@ public class BookingService {
             flightSeatRepository.save(seat);
 
             redisLockService.releaseSeatLock(
-                    booking.getFlight().getId().toString(), seat.getId().toString(), booking.getUser().getId().toString());
+                    booking.getFlight().getId().toString(),
+                    seat.getId().toString(),
+                    booking.getUser().getId().toString()
+            );
         }
 
         bookingRepository.save(booking);
