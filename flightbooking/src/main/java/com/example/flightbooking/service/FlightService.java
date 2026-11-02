@@ -3,17 +3,16 @@ package com.example.flightbooking.service;
 import com.example.flightbooking.dto.FlightSearchResult;
 import com.example.flightbooking.entity.Airport;
 import com.example.flightbooking.entity.Flight;
-import com.example.flightbooking.entity.SeatStatus;
 import com.example.flightbooking.exception.ApiException;
 import com.example.flightbooking.repository.AirportRepository;
 import com.example.flightbooking.repository.FlightRepository;
-import com.example.flightbooking.repository.FlightSeatRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,16 +22,13 @@ public class FlightService {
 
     private final FlightRepository flightRepository;
     private final AirportRepository airportRepository;
-    private final FlightSeatRepository flightSeatRepository;
     private final PricingService pricingService;
 
     public FlightService(FlightRepository flightRepository,
                          AirportRepository airportRepository,
-                          FlightSeatRepository flightSeatRepository,
                          PricingService pricingService) {
         this.flightRepository = flightRepository;
         this.airportRepository = airportRepository;
-        this.flightSeatRepository = flightSeatRepository;
         this.pricingService = pricingService;
     }
 
@@ -49,21 +45,25 @@ public class FlightService {
         Instant dayStart = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant dayEnd = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
-        List<Flight> flights = "price".equalsIgnoreCase(sortBy)
-                ? flightRepository.findBySourceAirportIdAndDestAirportIdAndDepartureTimeBetweenOrderByPriceAsc(
-                        source.getId(), dest.getId(), dayStart, dayEnd)
-                : flightRepository.findBySourceAirportIdAndDestAirportIdAndDepartureTimeBetweenOrderByDepartureTimeAsc(
+        // Tìm kiếm các chuyến bay theo thời gian khởi hành
+        List<Flight> flights = flightRepository
+                .findBySourceAirportIdAndDestAirportIdAndDepartureTimeBetweenOrderByDepartureTimeAsc(
                         source.getId(), dest.getId(), dayStart, dayEnd);
 
-        return flights.stream().map(f -> {
-            long available = flightSeatRepository.findByFlightIdOrderBySeatNumberAsc(f.getId()).stream()
-                    .filter(s -> s.getStatus() == SeatStatus.AVAILABLE)
-                    .count();
+        List<FlightSearchResult> results = flights.stream().map(f -> {
+            // Giá khởi điểm = (Giá ghế thấp nhất) x Hệ số động
+            BigDecimal dynamicStartingPrice = pricingService.calculateCurrentPrice(f.getId());
+            long availableSeats = f.getAvailableSeats() != null ? f.getAvailableSeats() : 60;
 
-            BigDecimal dynamicPrice = pricingService.calculateCurrentPrice(f.getId());
-
-            return new FlightSearchResult(f, dynamicPrice, available);
+            return new FlightSearchResult(f, dynamicStartingPrice, availableSeats);
         }).collect(Collectors.toList());
+
+        // Nếu client chọn sortBy = "price", tiến hành sắp xếp danh sách kết quả theo giá khởi điểm
+        if ("price".equalsIgnoreCase(sortBy)) {
+            results.sort(Comparator.comparing(FlightSearchResult::getPrice));
+        }
+
+        return results;
     }
 
     public Flight getById(UUID flightId) {

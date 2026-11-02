@@ -11,7 +11,4 @@ public interface FlightRepository extends JpaRepository<Flight, UUID> {
 
     List<Flight> findBySourceAirportIdAndDestAirportIdAndDepartureTimeBetweenOrderByDepartureTimeAsc(
             UUID sourceAirportId, UUID destAirportId, Instant dayStart, Instant dayEnd);
-
-    List<Flight> findBySourceAirportIdAndDestAirportIdAndDepartureTimeBetweenOrderByPriceAsc(
-            UUID sourceAirportId, UUID destAirportId, Instant dayStart, Instant dayEnd);
 }

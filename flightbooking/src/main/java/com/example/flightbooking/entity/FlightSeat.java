@@ -1,6 +1,8 @@
 package com.example.flightbooking.entity;
 
 import jakarta.persistence.*;
+
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -32,6 +34,15 @@ public class FlightSeat {
     @Column(name = "held_until")
     private Instant heldUntil;
 
+    @Column(name = "seat_class", nullable = false, length = 32)
+    private String seatClass = "ECONOMY";
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal price = new BigDecimal("1200000");
+
+    @Version
+    private Long version;
+
     public FlightSeat() {}
 
     public UUID getId() { return id; }
@@ -51,4 +62,13 @@ public class FlightSeat {
 
     public Instant getHeldUntil() { return heldUntil; }
     public void setHeldUntil(Instant heldUntil) { this.heldUntil = heldUntil; }
+
+    public String getSeatClass() { return seatClass; }
+    public void setSeatClass(String seatClass) { this.seatClass = seatClass; }
+
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

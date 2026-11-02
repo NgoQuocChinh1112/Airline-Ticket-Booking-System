@@ -34,11 +34,17 @@ public class Flight {
     @Column(name = "arrival_time", nullable = false)
     private Instant arrivalTime;
 
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal price;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
+
+    @Column(name = "airline_name", nullable = false)
+    private String airlineName = "Vietnam Airlines";
+
+    @Column(name = "total_seats", nullable = false)
+    private Integer totalSeats = 60;
+
+    @Column(name = "available_seats", nullable = false)
+    private Integer availableSeats = 60;
 
     public Flight() {}
 
@@ -63,9 +69,15 @@ public class Flight {
     public Instant getArrivalTime() { return arrivalTime; }
     public void setArrivalTime(Instant arrivalTime) { this.arrivalTime = arrivalTime; }
 
-    public BigDecimal getPrice() { return price; }
-    public void setPrice(BigDecimal price) { this.price = price; }
-
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public String getAirlineName() { return airlineName; }
+    public void setAirlineName(String airlineName) { this.airlineName = airlineName; }
+
+    public Integer getTotalSeats() { return totalSeats; }
+    public void setTotalSeats(Integer totalSeats) { this.totalSeats = totalSeats; }
+
+    public Integer getAvailableSeats() { return availableSeats; }
+    public void setAvailableSeats(Integer availableSeats) { this.availableSeats = availableSeats; }
 }
