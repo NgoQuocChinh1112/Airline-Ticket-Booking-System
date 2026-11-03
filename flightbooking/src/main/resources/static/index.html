@@ -189,7 +189,6 @@
             <!-- Ancillaries Section (Dịch vụ đi kèm) -->
             <div id="ancillariesSection" style="margin-top: 16px;">
                 <label style="font-size: 13px; font-weight: 600; color: var(--text);">Dịch vụ đi kèm (Hành lý, suất ăn...):</label>
-                <div id="ancillaryList" style="margin-top: 6px;"></div>
             </div>
 
             <!-- Passenger Forms -->
@@ -361,7 +360,6 @@
         document.getElementById('selectedFlightNumber').textContent = `${number} (${airline})`;
         document.getElementById('seatPanel').classList.remove('hidden');
         document.getElementById('confirmPanel').classList.add('hidden');
-        await loadAncillaries();
         await loadSeats();
     }
 
@@ -390,28 +388,6 @@
                 grid.appendChild(div);
             });
         } catch (e) { showMsg('bookingMsg', e.message, false); }
-    }
-
-    // Tải danh mục dịch vụ đi kèm (Ancillaries)
-    async function loadAncillaries() {
-        const list = document.getElementById('ancillaryList');
-        try {
-            const data = await api('/admin/ancillaries', 'GET').catch(() => []);
-            state.ancillariesData = data || [];
-            if (state.ancillariesData.length === 0) {
-                list.innerHTML = '<small style="color:var(--muted)">Không có dịch vụ đi kèm</small>';
-                return;
-            }
-            list.innerHTML = state.ancillariesData.map(a => `
-                <div class="ancillary-item">
-                    <div>
-                        <strong>${a.name}</strong> (${a.code || 'DV'})<br>
-                        <small style="color:var(--success)">${Number(a.basePrice).toLocaleString('vi-VN')} đ</small>
-                    </div>
-                    <input type="number" id="anc-${a.id}" min="0" value="0" onchange="updateEstimatedPrice()">
-                </div>
-            `).join('');
-        } catch (e) { list.innerHTML = ''; }
     }
 
     // Chọn / Bỏ chọn Ghế

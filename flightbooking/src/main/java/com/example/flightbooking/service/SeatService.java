@@ -25,12 +25,26 @@ public class SeatService {
         Instant now = Instant.now();
 
         return seats.stream().map(s -> {
-            // Lazy check: ghế "held" nhưng đã hết hạn thì hiển thị luôn là "available"
-            // cho client, không cần chờ job định kỳ chạy.
+            // Lazy check: ghế "HELD" quá hạn thì hiển thị là "AVAILABLE"
             boolean expiredHold = s.getStatus() == SeatStatus.HELD
-                    && s.getHeldUntil() != null && s.getHeldUntil().isBefore(now);
+                    && s.getHeldUntil() != null
+                    && s.getHeldUntil().isBefore(now);
+
             String displayStatus = expiredHold ? "AVAILABLE" : s.getStatus().name();
-            return new SeatDto(s.getId().toString(), s.getSeatNumber(), displayStatus);
+
+            // Truyền đủ 10 tham số tương ứng với Constructor của SeatDto
+            return new SeatDto(
+                    s.getId().toString(),
+                    s.getSeatNumber(),
+                    displayStatus,
+                    s.getSeatClass(),
+                    s.getPrice(),
+                    s.getHandBaggage(),
+                    s.getCheckedBaggage(),
+                    s.isAllowDateChange(),
+                    s.isAllowRefund(),
+                    s.getFareNote()
+            );
         }).collect(Collectors.toList());
     }
 }

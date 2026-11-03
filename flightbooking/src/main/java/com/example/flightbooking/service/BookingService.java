@@ -24,7 +24,6 @@ public class BookingService {
     private final FlightSeatRepository flightSeatRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
-    private final AncillaryItemRepository ancillaryItemRepository;
     private final RedisLockService redisLockService;
     private final PricingService pricingService;
     private final long holdSeconds;
@@ -33,7 +32,6 @@ public class BookingService {
                           FlightSeatRepository flightSeatRepository,
                           BookingRepository bookingRepository,
                           UserRepository userRepository,
-                          AncillaryItemRepository ancillaryItemRepository,
                           RedisLockService redisLockService,
                           PricingService pricingService,
                           @Value("${app.seat-hold-seconds}") long holdSeconds) {
@@ -41,7 +39,6 @@ public class BookingService {
         this.flightSeatRepository = flightSeatRepository;
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
-        this.ancillaryItemRepository = ancillaryItemRepository;
         this.redisLockService = redisLockService;
         this.pricingService = pricingService;
         this.holdSeconds = holdSeconds;
@@ -98,7 +95,7 @@ public class BookingService {
             throw ApiException.badRequest("Danh sách ghế không hợp lệ");
         }
 
-        // 1. Kiểm tra thời hạn giữ chỗ của từng ghế
+        // 1. Kiểm tra thời hạn giữ chỗ
         Instant now = Instant.now();
         for (FlightSeat seat : seats) {
             if (seat.getStatus() != SeatStatus.HELD
@@ -109,7 +106,7 @@ public class BookingService {
             }
         }
 
-        // 2. Tính tổng tiền các ghế (Lấy từng seat.getPrice() x hệ số động multiplier)
+        // 2. Tính tổng tiền vé (Giá từng ghế x Hệ số Dynamic Pricing)
         BigDecimal multiplier = pricingService.calculateMultiplier(flight.getId());
         BigDecimal totalSeatPrice = BigDecimal.ZERO;
         for (FlightSeat seat : seats) {
@@ -121,8 +118,9 @@ public class BookingService {
         booking.setUser(user);
         booking.setFlight(flight);
         booking.setStatus(BookingStatus.PENDING);
+        booking.setTotalPrice(totalSeatPrice);
 
-        // 3. Gán ghế và thông tin hành khách
+        // 3. Gán ghế & Hành khách
         Map<String, PassengerDto> seatIdToPassenger = mapSeatToPassenger(req);
         for (FlightSeat seat : seats) {
             BookingSeat bs = new BookingSeat();
@@ -133,36 +131,13 @@ public class BookingService {
             PassengerDto pDto = seatIdToPassenger.get(seat.getId().toString());
             Passenger passenger = new Passenger();
             passenger.setBooking(booking);
-            passenger.setFullName(pDto.getFullName());
-            passenger.setPassportNumber(pDto.getPassportNumber());
-            passenger.setDob(LocalDate.parse(pDto.getDob()));
+            passenger.setFullName(pDto != null ? pDto.getFullName() : "Hành Khách");
+            passenger.setPassportNumber(pDto != null ? pDto.getPassportNumber() : "");
+            passenger.setDob(pDto != null && pDto.getDob() != null ? LocalDate.parse(pDto.getDob()) : LocalDate.now());
             booking.getPassengers().add(passenger);
         }
 
-        // 4. Tính tiền và lưu Dịch vụ đi kèm (Ancillary Items)
-        BigDecimal totalAncillaryPrice = BigDecimal.ZERO;
-        if (req.getAncillaries() != null && !req.getAncillaries().isEmpty()) {
-            for (CreateBookingRequest.AncillaryRequest ancReq : req.getAncillaries()) {
-                AncillaryItem item = ancillaryItemRepository.findById(UUID.fromString(ancReq.getAncillaryItemId()))
-                        .orElseThrow(() -> ApiException.notFound("Không tìm thấy dịch vụ: " + ancReq.getAncillaryItemId()));
-
-                BigDecimal itemTotal = item.getBasePrice().multiply(BigDecimal.valueOf(ancReq.getQuantity()));
-                totalAncillaryPrice = totalAncillaryPrice.add(itemTotal);
-
-                BookingAncillary detail = new BookingAncillary();
-                detail.setBooking(booking);
-                detail.setAncillaryItem(item);
-                detail.setQuantity(ancReq.getQuantity());
-                detail.setPrice(item.getBasePrice()); // Lưu đơn giá thời điểm mua
-
-                booking.getAncillaries().add(detail);
-            }
-        }
-
-        // 5. Tổng chi phí đơn hàng = Tiền vé thực tế + Dịch vụ đính kèm
-        booking.setTotalPrice(totalSeatPrice.add(totalAncillaryPrice));
-
-        // 6. Cập nhật giảm bộ đếm ghế trống khả dụng trên chuyến bay
+        // 4. Giảm số ghế trống khả dụng
         if (flight.getAvailableSeats() != null) {
             flight.setAvailableSeats(Math.max(0, flight.getAvailableSeats() - seats.size()));
             flightRepository.save(flight);

@@ -1,9 +1,6 @@
 package com.example.flightbooking.service;
 
-import com.example.flightbooking.entity.Aircraft;
-import com.example.flightbooking.entity.Airport;
-import com.example.flightbooking.entity.Flight;
-import com.example.flightbooking.entity.FlightSeat;
+import com.example.flightbooking.entity.*;
 import com.example.flightbooking.repository.AircraftRepository;
 import com.example.flightbooking.repository.AirportRepository;
 import com.example.flightbooking.repository.FlightRepository;
@@ -97,13 +94,26 @@ public class DataSeeder implements CommandLineRunner {
                 FlightSeat seat = new FlightSeat();
                 seat.setFlight(flight);
                 seat.setSeatNumber(row + col);
+                seat.setStatus(SeatStatus.AVAILABLE);
 
                 if (row <= 2) {
+                    // HẠNG THƯƠNG GIA (BUSINESS)
                     seat.setSeatClass("BUSINESS");
                     seat.setPrice(new BigDecimal("3000000"));
+                    seat.setHandBaggage("02 kiện (10kg/kiện)");
+                    seat.setCheckedBaggage("01 kiện 32kg");
+                    seat.setAllowDateChange(true);
+                    seat.setAllowRefund(true);
+                    seat.setFareNote("Miễn phí đổi ngày bay; Được hoàn hủy vé");
                 } else {
+                    // HẠNG PHỔ THÔNG (ECONOMY)
                     seat.setSeatClass("ECONOMY");
                     seat.setPrice(new BigDecimal("1200000"));
+                    seat.setHandBaggage("01 kiện 07kg");
+                    seat.setCheckedBaggage("0kg (Mua thêm nếu có nhu cầu)");
+                    seat.setAllowDateChange(true);
+                    seat.setAllowRefund(false);
+                    seat.setFareNote("Thu phí đổi ngày bay 350.000đ + chênh lệch giá vé; Không hoàn vé");
                 }
                 seats.add(seat);
             }
