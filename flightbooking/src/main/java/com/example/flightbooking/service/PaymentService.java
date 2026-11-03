@@ -1,5 +1,8 @@
 package com.example.flightbooking.service;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import com.example.flightbooking.dto.CreatePaymentRequest;
 import com.example.flightbooking.dto.PaymentResponse;
 import com.example.flightbooking.entity.Booking;
@@ -69,7 +72,9 @@ public PaymentResponse createVnPayPayment(
         }
 
         if (existingPayment.getStatus() != PaymentStatus.PENDING) {
-            throw ApiException.badRequest("Giao dịch này không thể tiếp tục thanh toán");
+            existingPayment.setPaymentCode(generatePaymentCode());
+            existingPayment.setGatewayTransactionId(null);
+            existingPayment.setStatus(PaymentStatus.PENDING);
         }
 
         if (existingPayment.getExpiresAt().isBefore(Instant.now())) {
@@ -137,47 +142,86 @@ public PaymentResponse createVnPayPayment(
         return new PaymentResponse(paymentRepository.save(payment));
     }
 
-    @Transactional
-public PaymentResponse completeVnPayPayment(
-        String paymentCode,
-        String vnPayTransactionNumber,
-        String vnPayAmount
-) {
-    Payment payment = paymentRepository
-            .findByPaymentCodeForUpdate(paymentCode)
-            .orElseThrow(() -> ApiException.notFound("Không tìm thấy giao dịch thanh toán"));
-
-    if (payment.getStatus() == PaymentStatus.PAID) {
-        return new PaymentResponse(payment);
+    /**
+ * Xử lý IPN từ VNPay. Thứ tự kiểm tra theo đúng bộ test của VNPay:
+ * chữ ký (97) -> không thấy đơn (01) -> sai số tiền (04) -> đơn đã xử lý (02) -> cập nhật (00).
+ *
+ * Không ném exception cho các trường hợp nghiệp vụ đã biết, chỉ ném khi lỗi bất ngờ
+ * (vd confirmBooking thất bại) để transaction rollback; controller sẽ đổi thành RspCode 99.
+ */
+@Transactional
+public Map<String, String> processVnPayIpn(Map<String, String> parameters) {
+    // 97 - Chữ ký không hợp lệ
+    if (!vnPayService.isValidSignature(parameters)) {
+        return ipnResponse("97", "Invalid Checksum");
     }
 
-    if (payment.getStatus() != PaymentStatus.PENDING) {
-        throw ApiException.badRequest("Giao dịch không thể xác nhận");
+    String paymentCode = parameters.get("vnp_TxnRef");
+    String amount = parameters.get("vnp_Amount");
+    String transactionNumber = parameters.get("vnp_TransactionNo");
+    String responseCode = parameters.get("vnp_ResponseCode");
+    String transactionStatus = parameters.get("vnp_TransactionStatus");
+
+    if (paymentCode == null || paymentCode.isBlank() || amount == null || amount.isBlank()) {
+        return ipnResponse("99", "Missing payment data");
     }
 
-    if (payment.getExpiresAt().isBefore(Instant.now())) {
-        payment.setStatus(PaymentStatus.EXPIRED);
-        paymentRepository.save(payment);
-
-        throw ApiException.badRequest("Giao dịch đã hết hạn");
+    // 01 - Không tìm thấy giao dịch
+    Payment payment = paymentRepository.findByPaymentCodeForUpdate(paymentCode).orElse(null);
+    if (payment == null) {
+        return ipnResponse("01", "Order Not Found");
     }
 
+    // 04 - Số tiền không khớp (phải kiểm tra TRƯỚC trạng thái, VNPay test lại trên đơn đã PAID)
     String expectedAmount = payment.getAmount()
             .movePointRight(2)
             .toBigIntegerExact()
             .toString();
 
-    if (!expectedAmount.equals(vnPayAmount)) {
-        throw ApiException.badRequest("Số tiền VNPay trả về không khớp");
+    if (!expectedAmount.equals(amount)) {
+        return ipnResponse("04", "Invalid amount");
     }
 
-    payment.setGatewayTransactionId(vnPayTransactionNumber);
+    // 02 - Giao dịch đã được xử lý trước đó (PAID/FAILED/EXPIRED)
+    if (payment.getStatus() != PaymentStatus.PENDING) {
+        return ipnResponse("02", "Order already confirmed");
+    }
+
+    boolean paymentSucceeded = "00".equals(responseCode) && "00".equals(transactionStatus);
+
+    // Thanh toán không thành công -> lưu FAILED, vẫn trả 00 để VNPay biết đã nhận kết quả
+    if (!paymentSucceeded) {
+        if (transactionNumber != null && !transactionNumber.isBlank()) {
+            payment.setGatewayTransactionId(transactionNumber);
+        }
+        payment.setStatus(PaymentStatus.FAILED);
+        paymentRepository.save(payment);
+
+        return ipnResponse("00", "Confirm Success");
+    }
+
+    if (transactionNumber == null || transactionNumber.isBlank()) {
+        return ipnResponse("99", "Missing payment data");
+    }
+
+    // Thanh toán thành công -> PAID và xác nhận booking.
+    // Không chặn theo expiresAt ở đây: VNPay đã thu tiền, confirmBooking sẽ tự kiểm tra ghế còn được giữ.
+    payment.setGatewayTransactionId(transactionNumber);
     payment.setStatus(PaymentStatus.PAID);
     payment.setPaidAt(Instant.now());
 
     bookingService.confirmBooking(payment.getBooking().getId());
+    paymentRepository.save(payment);
 
-    return new PaymentResponse(paymentRepository.save(payment));
+    return ipnResponse("00", "Confirm Success");
+}
+
+public static Map<String, String> ipnResponse(String responseCode, String message) {
+    // LinkedHashMap giữ thứ tự Message -> RspCode giống mẫu của VNPay
+    Map<String, String> response = new LinkedHashMap<>();
+    response.put("Message", message);
+    response.put("RspCode", responseCode);
+    return response;
 }
 
     private String generatePaymentCode() {

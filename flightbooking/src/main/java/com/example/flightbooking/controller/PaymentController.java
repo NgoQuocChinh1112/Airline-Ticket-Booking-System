@@ -2,15 +2,15 @@ package com.example.flightbooking.controller;
 
 import com.example.flightbooking.dto.CreatePaymentRequest;
 import com.example.flightbooking.dto.PaymentResponse;
+import com.example.flightbooking.exception.ApiException;
 import com.example.flightbooking.service.PaymentService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import com.example.flightbooking.exception.ApiException;
-import com.example.flightbooking.service.VnPayService;
 
 import java.util.Map;
 
@@ -18,30 +18,31 @@ import java.util.Map;
 @RequestMapping("/payments")
 public class PaymentController {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
+
     private final PaymentService paymentService;
-    private final VnPayService vnPayService;
 
-    public PaymentController(PaymentService paymentService, VnPayService vnPayService) {
+    public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
-        this.vnPayService = vnPayService;
     }
+
     @PostMapping
-public PaymentResponse createPayment(
-        Authentication authentication,
-        @Valid @RequestBody CreatePaymentRequest request,
-        HttpServletRequest httpRequest
+    public PaymentResponse createPayment(
+            Authentication authentication,
+            @Valid @RequestBody CreatePaymentRequest request,
+            HttpServletRequest httpRequest
     ) {
-    String userId = (String) authentication.getPrincipal();
+        String userId = (String) authentication.getPrincipal();
 
-    String clientIp = httpRequest.getHeader("X-Forwarded-For");
+        String clientIp = httpRequest.getHeader("X-Forwarded-For");
 
-    if (clientIp == null || clientIp.isBlank()) {
-        clientIp = httpRequest.getRemoteAddr();
-    } else {
-        clientIp = clientIp.split(",")[0].trim();
-    }
+        if (clientIp == null || clientIp.isBlank()) {
+            clientIp = httpRequest.getRemoteAddr();
+        } else {
+            clientIp = clientIp.split(",")[0].trim();
+        }
 
-    return paymentService.createVnPayPayment(userId, request, clientIp);
+        return paymentService.createVnPayPayment(userId, request, clientIp);
     }
 
     @PostMapping("/{paymentCode}/sandbox/complete")
@@ -54,56 +55,25 @@ public PaymentResponse createPayment(
         return paymentService.completeSandboxPayment(userId, paymentCode);
     }
 
+    /**
+     * IPN do VNPay gọi. Luôn phải trả JSON {"RspCode": "...", "Message": "..."}.
+     * Mọi kết quả nghiệp vụ (97/01/04/02/00) do PaymentService quyết định.
+     */
     @GetMapping("/vnpay/ipn")
-public Map<String, String> handleVnPayIpn(
-        @RequestParam Map<String, String> parameters
-) {
-    if (!vnPayService.isValidSignature(parameters)) {
-        return ipnResponse("97", "Invalid Checksum");
+    public Map<String, String> handleVnPayIpn(@RequestParam Map<String, String> parameters) {
+        try {
+            return paymentService.processVnPayIpn(parameters);
+        } catch (ApiException ex) {
+            log.warn("IPN VNPay không xử lý được: {}", ex.getMessage());
+            return PaymentService.ipnResponse("99", ex.getMessage());
+        } catch (RuntimeException ex) {
+            log.error("Lỗi không mong đợi khi xử lý IPN VNPay", ex);
+            return PaymentService.ipnResponse("99", "Unknown error");
+        }
     }
 
-    String paymentCode = parameters.get("vnp_TxnRef");
-    String amount = parameters.get("vnp_Amount");
-    String transactionNumber = parameters.get("vnp_TransactionNo");
-    String responseCode = parameters.get("vnp_ResponseCode");
-    String transactionStatus = parameters.get("vnp_TransactionStatus");
-
-    if (paymentCode == null || amount == null || transactionNumber == null) {
-        return ipnResponse("99", "Missing payment data");
+    @GetMapping("/vnpay/status/{paymentCode}")
+    public PaymentResponse getVnPayPaymentStatus(@PathVariable String paymentCode) {
+        return paymentService.getVnPayPaymentStatus(paymentCode);
     }
-
-    boolean paymentSucceeded =
-            "00".equals(responseCode)
-            && "00".equals(transactionStatus);
-
-    if (!paymentSucceeded) {
-        return ipnResponse("00", "Confirm Success");
-    }
-
-    try {
-        paymentService.completeVnPayPayment(
-                paymentCode,
-                transactionNumber,
-                amount
-        );
-
-        return ipnResponse("00", "Confirm Success");
-    } catch (ApiException ex) {
-        return ipnResponse("99", ex.getMessage());
-    }
-}
-
-private Map<String, String> ipnResponse(String responseCode, String message) {
-    return Map.of(
-            "RspCode", responseCode,
-            "Message", message
-    );
-}
-
-@GetMapping("/vnpay/status/{paymentCode}")
-public PaymentResponse getVnPayPaymentStatus(
-        @PathVariable String paymentCode
-) {
-    return paymentService.getVnPayPaymentStatus(paymentCode);
-}
 }

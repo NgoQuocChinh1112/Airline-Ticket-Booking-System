@@ -2,9 +2,9 @@ package com.example.flightbooking.entity;
 
 public enum PaymentStatus {
     
-    PENDING, 
+    PENDING,  
     PAID,  
     FAILED, 
-    EXPIRED
+    EXPIRED,
 
 }

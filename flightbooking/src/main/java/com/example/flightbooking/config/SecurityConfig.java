@@ -42,7 +42,7 @@ public class SecurityConfig {
                         // Các API Public
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/flights/**").permitAll()
-                        .requestMatchers("/payment/vnpay/ipn").permitAll()
+                        .requestMatchers("/payments/vnpay/ipn").permitAll()
                         // .requestMatchers("/bookings/*/confirm", "/bookings/*/cancel").permitAll()
                         .requestMatchers("/admin/**").permitAll()
                         .requestMatchers("/payments/vnpay/status/*").permitAll()

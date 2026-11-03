@@ -82,7 +82,7 @@ public class VnPayService {
         boolean isSignature = key.equals("vnp_SecureHash")
                 || key.equals("vnp_SecureHashType");
 
-        if (isVnPayParameter && !isSignature && value != null) {
+        if (isVnPayParameter && !isSignature && value != null && !value.isEmpty()) {
             signedParameters.put(key, value);
         }
     });
